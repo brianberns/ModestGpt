@@ -74,9 +74,9 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
         member _.ParameterSettings
             with get() =
                 seq {
-                    yield linear.weight, true
+                    linear.weight, true
                     if hasBias then
-                        yield linear.bias, false
+                        linear.bias, false
                 }
 
     override _.forward(inp) = inp --> linear
@@ -98,6 +98,11 @@ type Embedding(size, numEmbed) as self =
 
         embedding.weight.normal_(mean = 0.0, std = 0.02) |> ignore
 
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq { embedding.weight, false }
+
     override _.forward(inp) = inp --> embedding
 
 type LayerNorm(shape : int64) as self =
@@ -111,14 +116,36 @@ type LayerNorm(shape : int64) as self =
         layerNorm.weight |> nn.init.ones_ |> ignore
         layerNorm.bias.zero_() |> ignore
 
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq {
+                    layerNorm.weight, false
+                    layerNorm.bias, false
+                }
+
     override _.forward(inp) = inp --> layerNorm
+
+type Sequential([<ParamArray>] modules : nn.Module<Tensor, Tensor>[]) =
+    inherit Modules.Sequential(modules)
+
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq {
+                    for m in modules do
+                        match m :> obj with
+                            | :? IWeightDecay as wd ->
+                                yield! wd.ParameterSettings
+                            | _ -> ()
+                }
 
 type FeedForward(config) as self =
     inherit nn.Module<Tensor, Tensor>("FeedForward")
 
     let size = 4 * config.NumEmbed
     let sequential =
-        nn.Sequential(
+        new Sequential(
             new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
             nn.GELU(),                                               // activation layer
             new Projection(size, config.NumEmbed, config.NumLayer),
@@ -149,7 +176,7 @@ type CausalSelfAttention(config) as self =
 
         // output projection
     let outProj =
-        nn.Sequential(
+        new Sequential(
             new Projection(config.NumEmbed, config.NumEmbed, config.NumLayer),
             nn.Dropout(config.Dropout))
 
@@ -194,11 +221,11 @@ type TransformerBlock(config) as self =
     inherit nn.Module<Tensor, Tensor>("TransformerBlock")
 
     let layer1 =
-        nn.Sequential(
+        new Sequential(
             new LayerNorm(config.NumEmbed),
             new CausalSelfAttention(config))
     let layer2 =
-        nn.Sequential(
+        new Sequential(
             new LayerNorm(config.NumEmbed),
             new FeedForward(config))
 
@@ -215,12 +242,12 @@ type Transformer(config) as self =
     let wpe = new Embedding(config.BlockSize, config.NumEmbed)
     let sequential =
         let blocks =
-            Seq.init config.NumLayer (fun _ ->
+            Array.init config.NumLayer (fun _ ->
                 new TransformerBlock(config)
                     :> nn.Module<_, _>)
-        nn.Sequential(
+        new Sequential(
             nn.Dropout(config.Dropout),
-            nn.Sequential(blocks),
+            new Sequential(blocks),
             new LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
