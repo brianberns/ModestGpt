@@ -9,6 +9,22 @@ open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
+[<AutoOpen>]
+module TorchExt =
+
+    let scalar (x : float) = x.ToScalar()
+
+    let (@) a b = torch.matmul(a, b)
+
+module Tuple3 =
+
+    let map f (a, b, c) =
+        f a, f b, f c
+
+    let ofArray = function
+        | [| a; b; c |] -> a, b, c
+        | array -> failwith $"Unexpected array length: {array.Length}"
+
 module Model =
 
     let feedForward numEmbed dropoutProb =
@@ -20,52 +36,67 @@ module Model =
             nn.Dropout(dropoutProb))     // to-do: clarify "residual" dropout
 
 /// Causal: only looks at previous tokens.
-type CausalSelfAttention(numEmbed, numHead, dropoutProb) as self =
+type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropoutProb) as self =
     inherit nn.Module<Tensor, Tensor>("CausalSelfAttention")
 
-    // query, key, value projections for all heads, but in a batch
-    let inpProj = nn.Linear(numEmbed, 3 * numEmbed)
+    do assert(numEmbed % numHead = 0)
 
+        // key, query, value projections for all heads, but in a batch
+    let inpProj = nn.Linear(numEmbed, 3L * int64 numEmbed)
+
+        // output projection
     let outProj =
         nn.Sequential(
-            nn.Linear(numEmbed, numEmbed),   // to-do: clarify output "projection" name
+            nn.Linear(numEmbed, numEmbed),
             nn.Dropout(dropoutProb))
+
+        // regularization
+    let dropout = nn.Dropout(dropoutProb)
+
+        // causal mask to ensure that attention is only applied to the left in the input sequence
+    let bias =
+        torch
+            .tril(torch.ones(blockSize, blockSize))
+            .view(1, 1, blockSize, blockSize)
 
     do self.RegisterComponents()
 
     override _.forward(inp) =
-        let [| B; T; C |] = inp.size() // batch size, sequence length, embedding dimensionality (numEmbed)
 
-        // calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        let [| q; k; v |] = (inp --> inpProj).split(numEmbed, dim = 2)
-        let q = q.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
-        let k = k.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
-        let v = v.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+        let B, T, C = inp.size() |> Tuple3.ofArray // batch size, sequence length, embedding dimensionality (numEmbed)
 
-        let moo = mha.forward(q, k, v)
+            // calculate query, key, values for all heads in batch and move head forward to be the batch dim
+        let q, k, v =
+            let prepare (t : Tensor) =
+                t.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+            (inp --> inpProj)
+                .split(numEmbed, dim = 2)
+                |> Tuple3.ofArray
+                |> Tuple3.map prepare
 
-        // causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
-        let att = (q @@ k.transpose(-2, -1)) * s (1.0 / Math.Sqrt(float <| k.size(-1)))
+            // causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         let att =
-            let bias = self._internal_buffers["bias"]
+            let att =
+                let scale = 1.0 / (k.size(-1) |> float |> sqrt)
+                (q @ k.transpose(-2, -1)) * scalar scale
             let mask = bias[Colon, Colon, Slice(stop=T), Slice(stop=T)]
             att.masked_fill(torch.eq(mask, 0), Double.NegativeInfinity)
-        let att = softmax(att, dim = -1)
-        let att = att --> attn_dropout
-        let y = att @@ v // (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-        let y = y.transpose(1, 2).contiguous().view(B, T, C) // re-assemble all head outputs side by side
-
-        // output projection
-        y --> c_proj --> resid_dropout
+                .softmax(dim = -1)
+                --> dropout
+        (att @ v) // (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+            .transpose(1, 2)
+            .contiguous()
+            .view(B, T, C) // re-assemble all head outputs side by side
+            --> outProj   // output projection
 
 /// Transformer decoder block.
-type TransformerBlock(numEmbed : int, numHead : int, dropoutProb) as self =
+type TransformerBlock(numEmbed : int, numHead : int, blockSize, dropoutProb) as self =
     inherit nn.Module<Tensor, Tensor>("TransformerBlock")
 
     do assert(numEmbed % numHead = 0)
 
     let layerNorm1 = nn.LayerNorm(numEmbed)
-    let attention = nn.MultiheadAttention(numEmbed, numHead, dropoutProb)
+    let attention = new CausalSelfAttention(numEmbed, numHead, blockSize, dropoutProb)
     let layerNorm2 = nn.LayerNorm(numEmbed)
     let feedForward = Model.feedForward numEmbed dropoutProb
 
