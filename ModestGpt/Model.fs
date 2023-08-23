@@ -41,7 +41,7 @@ type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropout
 
     do assert(numEmbed % numHead = 0)
 
-        // key, query, value projections for all heads, but in a batch
+        // query, key, value projections for all heads, but in a batch
     let inpProj = nn.Linear(numEmbed, 3L * int64 numEmbed)
 
         // output projection
@@ -63,27 +63,33 @@ type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropout
 
     override _.forward(inp) =
 
-        let B, T, C = inp.size() |> Tuple3.ofArray // batch size, sequence length, embedding dimensionality (numEmbed)
+            // batch size, sequence length, embedding dimensionality (numEmbed)
+        let B, T, C = Tuple3.ofArray inp.shape
+        assert(C = numEmbed)
 
             // calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        let q, k, v =
-            let prepare (t : Tensor) =
-                t.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+        let query, key, value =
             (inp --> inpProj)
                 .split(numEmbed, dim = 2)
                 |> Tuple3.ofArray
-                |> Tuple3.map prepare
+                |> Tuple3.map (fun t ->
+                    t.view(B, T, numHead, C / int64 numHead)
+                        .transpose(1, 2)) // (B, nh, T, hs)
 
             // causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         let att =
             let att =
-                let scale = 1.0 / (k.size(-1) |> float |> sqrt)
-                (q @ k.transpose(-2, -1)) * scalar scale
-            let mask = bias[Colon, Colon, Slice(stop=T), Slice(stop=T)]
+                let scale = 1.0 / (key.size(-1) |> float |> sqrt)
+                (query @ key.transpose(-2, -1)) * scalar scale
+            let mask =
+                let slice = Slice(stop = T)
+                bias[Colon, Colon, slice, slice]
             att.masked_fill(torch.eq(mask, 0), Double.NegativeInfinity)
                 .softmax(dim = -1)
                 --> dropout
-        (att @ v) // (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+
+             // (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+        (att @ value)
             .transpose(1, 2)
             .contiguous()
             .view(B, T, C) // re-assemble all head outputs side by side
