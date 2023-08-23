@@ -45,6 +45,10 @@ type ModelConfig =
         NumLayer : int
     }
 
+type IWeightDecay =
+
+    abstract member ParameterSettings : seq<Parameter * bool> with get
+
 type Linear(inputSize, outputSize, ?hasBias) as self =
     inherit nn.Module<Tensor, Tensor>("Linear")
 
@@ -54,28 +58,35 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
     do
         self.RegisterComponents()
 
-        linear.weight.normal_(mean = 0.0, std = 0.02) |> ignore
+        linear.weight.normal_(
+            mean = 0.0,
+            std = self.InitialStandardDeviation)
+                |> ignore
+
         if hasBias then
             linear.bias.zero_() |> ignore
         else assert(isNull linear.bias)
 
-    override _.forward(inp) = inp --> linear
+    abstract member InitialStandardDeviation : float with get
+    default _.InitialStandardDeviation with get() = 0.02
 
-type Projection(inputSize, outputSize, numLayer) as self =
-    inherit nn.Module<Tensor, Tensor>("Projection")
-
-    let linear = nn.Linear(inputSize, outputSize)
-
-    do
-        self.RegisterComponents()
-
-        linear.weight.normal_(   // apply a special scaled init to the residual projections, per GPT-2 paper
-            mean = 0.0,
-            std = 0.02 / sqrt (2.0 * float numLayer))
-            |> ignore
-        linear.bias.zero_() |> ignore
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq {
+                    yield linear.weight, true
+                    if hasBias then
+                        yield linear.bias, false
+                }
 
     override _.forward(inp) = inp --> linear
+
+type Projection(inputSize, outputSize, numLayer) =
+    inherit Linear(inputSize, outputSize)
+
+    override _.InitialStandardDeviation
+        with get() =
+            base.InitialStandardDeviation / sqrt (2.0 * float numLayer)   // apply a special scaled init to the residual projections, per GPT-2 paper
 
 type Embedding(size, numEmbed) as self =
     inherit nn.Module<Tensor, Tensor>("Linear")
@@ -233,61 +244,6 @@ type GPT(config) as self =
     let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
     do self.RegisterComponents()
-
-    /// This long function is unfortunately doing something very simple and is being very defensive:
-    /// We are separating out all parameters of the model into two buckets: those that will experience
-    /// weight decay for regularization and those that won't (biases, and layernorm/embedding weights).
-    /// We are then returning the PyTorch optimizer object.
-    member _.configure_optimizers(train_config) =
-
-        // separate out all parameters to those that will and won't experience regularizing weight decay
-        let mfpns =
-            [|
-                for mn, m in self.named_modules() do
-                    for struct(pn, p) in m.named_parameters() do
-                        m, $"{mn}.{pn}" // full param name
-            |]
-        let decay, no_decay =
-            ((Set.empty, Set.empty), mfpns)
-                ||> Seq.fold (fun (decay, no_decay) (m, fpn) ->
-                // random note: because named_modules and named_parameters are recursive
-                // we will see the same tensors p many many times. but doing it this way
-                // allows us to know which parent module any tensor p belongs to...
-                if fpn.EndsWith("bias") then
-                    // all biases will not be decayed
-                    decay, Set.add fpn no_decay
-                elif fpn.EndsWith("weight") then
-                    match m with
-                        | :? Linear ->
-                            // weights will be weight decayed
-                            Set.add fpn decay, no_decay
-                        | :? LayerNorm
-                        | :? Embedding ->
-                            // weights will NOT be weight decayed
-                            decay, Set.add fpn no_decay
-                        | _ -> decay, no_decay
-                else decay, no_decay)
-
-        // validate that we considered every parameter
-        let param_dict = Map [ for struct (pn, p) in self.named_parameters() -> pn, p ]
-        let inter_params = Set.intersect decay no_decay
-        let union_params = Set.union decay no_decay
-        assert (inter_params.Count = 0)
-        assert (param_dict.Count = union_params.Count)
-
-        // create the pytorch optimizer object
-        let optim_groups =
-            [
-                AdamW.ParamGroup(
-                    [ for pn in decay -> param_dict[pn] ],
-                    AdamW.Options(weight_decay=train_config.weight_decay))
-                AdamW.ParamGroup(
-                    [ for pn in no_decay -> param_dict[pn] ],
-                    AdamW.Options(weight_decay=0.0))
-            ]
-        let beta1, beta2 = train_config.betas
-        let optimizer = torch.optim.AdamW(optim_groups, lr=train_config.learning_rate, beta1=beta1, beta2=beta2)
-        optimizer
 
     member _.forward(idx) =
         idx --> transformer --> lm_head

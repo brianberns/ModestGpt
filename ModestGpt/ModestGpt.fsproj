@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Trainer.fs" />
     <Compile Include="Model.fs" />
   </ItemGroup>
 
