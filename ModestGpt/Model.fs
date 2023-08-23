@@ -23,22 +23,26 @@ module Model =
 type CausalSelfAttention(numEmbed, numHead, dropoutProb) as self =
     inherit nn.Module<Tensor, Tensor>("CausalSelfAttention")
 
-    let mha = nn.MultiheadAttention(numEmbed, numHead, dropoutProb)
-    let proj =
+    // query, key, value projections for all heads, but in a batch
+    let inpProj = nn.Linear(numEmbed, 3 * numEmbed)
+
+    let outProj =
         nn.Sequential(
-            nn.Linear(numEmbed, numEmbed),   // to-do: clarify "projection" name
+            nn.Linear(numEmbed, numEmbed),   // to-do: clarify output "projection" name
             nn.Dropout(dropoutProb))
 
     do self.RegisterComponents()
 
-    override _.forward(x) =
-        let [| B; T; C |] = x.size() // batch size, sequence length, embedding dimensionality (numEmbed)
+    override _.forward(inp) =
+        let [| B; T; C |] = inp.size() // batch size, sequence length, embedding dimensionality (numEmbed)
 
         // calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        let [| q; k; v |] = (x --> c_attn).split(n_embd, dim=2)
-        let k = k.view(B, T, n_head, C / int64 n_head).transpose(1, 2) // (B, nh, T, hs)
-        let q = q.view(B, T, n_head, C / int64 n_head).transpose(1, 2) // (B, nh, T, hs)
-        let v = v.view(B, T, n_head, C / int64 n_head).transpose(1, 2) // (B, nh, T, hs)
+        let [| q; k; v |] = (inp --> inpProj).split(numEmbed, dim = 2)
+        let q = q.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+        let k = k.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+        let v = v.view(B, T, numHead, C / int64 numHead).transpose(1, 2) // (B, nh, T, hs)
+
+        let moo = mha.forward(q, k, v)
 
         // causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         let att = (q @@ k.transpose(-2, -1)) * s (1.0 / Math.Sqrt(float <| k.size(-1)))
