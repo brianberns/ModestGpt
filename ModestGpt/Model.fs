@@ -55,8 +55,8 @@ type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropout
 
         // causal mask to ensure that attention is only applied to the left in the input sequence
     let bias =
-        torch
-            .tril(torch.ones(blockSize, blockSize))
+        (torch.ones(blockSize, blockSize)
+            |> torch.tril)
             .view(1, 1, blockSize, blockSize)
 
     do self.RegisterComponents()
@@ -108,10 +108,9 @@ type TransformerBlock(numEmbed : int, numHead : int, blockSize, dropoutProb) as 
 
     do self.RegisterComponents()
 
-    override _.forward(x) =
-        let x = x + (x --> layerNorm1 --> attention)
-        let x = x + (x --> layerNorm2 --> feedForward)
-        x
+    override _.forward(inp) =
+        let x = inp + (inp --> layerNorm1 --> attention)
+        x + (x --> layerNorm2 --> feedForward)
 
 /// This is a submodule of GPT in the original minGPT, but it works better as a
 /// top-level module in F#.
