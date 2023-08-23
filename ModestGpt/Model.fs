@@ -16,6 +16,15 @@ module TorchExt =
 
     let (@) a b = torch.matmul(a, b)
 
+module Tuple2 =
+
+    let map f (a, b) =
+        f a, f b
+
+    let ofArray = function
+        | [| a; b |] -> a, b
+        | array -> failwith $"Unexpected array length: {array.Length}"
+
 module Tuple3 =
 
     let map f (a, b, c) =
@@ -25,33 +34,35 @@ module Tuple3 =
         | [| a; b; c |] -> a, b, c
         | array -> failwith $"Unexpected array length: {array.Length}"
 
+type ModelConfig =
+    {
+        NumEmbed : int
+        NumHead : int
+        BlockSize : int
+        Dropout : float
+        VocabSize : int
+        NumLayer : int
+    }
+
 module Model =
 
-    let feedForward numEmbed dropoutProb =
-        let size = 4 * numEmbed
+    let feedForward config =
+        let size = 4 * config.NumEmbed
         nn.Sequential(
-            nn.Linear(numEmbed, size),   // to-do: clarify "c_fc" name
-            nn.GELU(),                   // activation layer
-            nn.Linear(size, numEmbed),   // to-do: clarify "c_proj" name
-            nn.Dropout(dropoutProb))     // to-do: clarify "residual" dropout
+            nn.Linear(config.NumEmbed, size),   // to-do: clarify "c_fc" name
+            nn.GELU(),                          // activation layer
+            nn.Linear(size, config.NumEmbed),   // to-do: clarify "c_proj" name
+            nn.Dropout(config.Dropout))         // to-do: clarify "residual" dropout
 
 /// Causal: only looks at previous tokens.
-type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropoutProb) as self =
+type CausalSelfAttention(config) as self =
     inherit nn.Module<Tensor, Tensor>("CausalSelfAttention")
 
-    do assert(numEmbed % numHead = 0)
+    let blockSize = config.BlockSize
+    do assert(config.NumEmbed % config.NumHead = 0)
 
         // query, key, value projections for all heads, but in a batch
-    let inpProj = nn.Linear(numEmbed, 3L * int64 numEmbed)
-
-        // output projection
-    let outProj =
-        nn.Sequential(
-            nn.Linear(numEmbed, numEmbed),
-            nn.Dropout(dropoutProb))
-
-        // regularization
-    let dropout = nn.Dropout(dropoutProb)
+    let inpProj = nn.Linear(config.NumEmbed, 3L * int64 config.NumEmbed)
 
         // causal mask to ensure that attention is only applied to the left in the input sequence
     let bias =
@@ -59,21 +70,30 @@ type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropout
             |> torch.tril)
             .view(1, 1, blockSize, blockSize)
 
+        // regularization
+    let dropout = nn.Dropout(config.Dropout)
+
+        // output projection
+    let outProj =
+        nn.Sequential(
+            nn.Linear(config.NumEmbed, config.NumEmbed),
+            nn.Dropout(config.Dropout))
+
     do self.RegisterComponents()
 
     override _.forward(inp) =
 
             // batch size, sequence length, embedding dimensionality (numEmbed)
         let B, T, C = Tuple3.ofArray inp.shape
-        assert(C = numEmbed)
+        assert(C = config.NumEmbed)
 
             // calculate query, key, values for all heads in batch and move head forward to be the batch dim
         let query, key, value =
             (inp --> inpProj)
-                .split(numEmbed, dim = 2)
+                .split(config.NumEmbed, dim = 2)
                 |> Tuple3.ofArray
                 |> Tuple3.map (fun t ->
-                    t.view(B, T, numHead, C / int64 numHead)
+                    t.view(B, T, config.NumHead, C / int64 config.NumHead)
                         .transpose(1, 2)) // (B, nh, T, hs)
 
             // causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
@@ -96,49 +116,50 @@ type CausalSelfAttention(numEmbed : int, numHead : int, blockSize : int, dropout
             --> outProj   // output projection
 
 /// Transformer decoder block.
-type TransformerBlock(numEmbed : int, numHead : int, blockSize, dropoutProb) as self =
+type TransformerBlock(config) as self =
     inherit nn.Module<Tensor, Tensor>("TransformerBlock")
 
-    do assert(numEmbed % numHead = 0)
-
-    let layerNorm1 = nn.LayerNorm(numEmbed)
-    let attention = new CausalSelfAttention(numEmbed, numHead, blockSize, dropoutProb)
-    let layerNorm2 = nn.LayerNorm(numEmbed)
-    let feedForward = Model.feedForward numEmbed dropoutProb
+    let layer1 =
+        nn.Sequential(
+            nn.LayerNorm(config.NumEmbed),
+            new CausalSelfAttention(config))
+    let layer2 =
+        nn.Sequential(
+            nn.LayerNorm(config.NumEmbed),
+            Model.feedForward config)
 
     do self.RegisterComponents()
 
     override _.forward(inp) =
-        let x = inp + (inp --> layerNorm1 --> attention)
-        x + (x --> layerNorm2 --> feedForward)
+        let x = inp + (inp --> layer1)
+        x + (x --> layer2)
 
-/// This is a submodule of GPT in the original minGPT, but it works better as a
-/// top-level module in F#.
 type Transformer(config) as self =
     inherit nn.Module<Tensor, Tensor>("Transformer")
 
-    let block_size = config.block_size
-
-    let wte = nn.Embedding(config.vocab_size, config.n_embd)
-    let wpe = nn.Embedding(config.block_size, config.n_embd)
-    let drop = nn.Dropout(config.embd_pdrop)
-    let h = nn.ModuleList([| for _ in range(config.n_layer) -> new Block(config) |])
-    let ln_f = nn.LayerNorm(config.n_embd)
+    let wte = nn.Embedding(config.VocabSize, config.NumEmbed)
+    let wpe = nn.Embedding(config.BlockSize, config.NumEmbed)
+    let pipeline =
+        let blocks : nn.Module<_, _>[] =
+            Array.init config.NumLayer (fun _ ->
+                new TransformerBlock(config))
+        nn.Sequential(
+            nn.Dropout(config.Dropout),
+            nn.Sequential(blocks),
+            nn.LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
 
     override _.forward(idx) =
         let device = idx.device
-        let [| b; t; |] = idx.size()
-        if t > block_size then
-            failwith $"Cannot forward sequence of length {t}, block size is only {block_size}"
+        let b, t = Tuple2.ofArray idx.shape
+        if t > config.BlockSize then
+            failwith $"Cannot forward sequence of length {t}, block size is only {config.BlockSize}"
         let pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) // shape (1, t)
 
         let tok_emb = idx --> wte // token embeddings of shape (b, t, n_embd)
         let pos_emb = pos --> wpe // position embeddings of shape (1, t, n_embd)
-        let x = (tok_emb + pos_emb) --> drop
-        let x = Seq.fold (-->) x h
-        x --> ln_f
+        (tok_emb + pos_emb) --> pipeline
 
 /// GPT Language Model
 type GPT(config) as self =
