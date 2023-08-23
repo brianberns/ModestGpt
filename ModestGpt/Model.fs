@@ -5,6 +5,7 @@ namespace MinGptSharp
 open System
 
 open TorchSharp
+open TorchSharp.Modules
 open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
@@ -166,31 +167,26 @@ type Transformer(config) as self =
 type GPT(config) as self =
     inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
 
-    do
-        assert(config.VocabSize > 0)
-        assert(config.BlockSize > 0)
-
     let transformer = new Transformer(config)
-    let lm_head = nn.Linear(config.n_embd, config.vocab_size, hasBias=false)
+    let lm_head = nn.Linear(config.NumEmbed, config.VocabSize, hasBias=false)
 
-    let _init_weights(mdule : nn.Module) =
-        match mdule with
-            | :? Modules.Linear as linear ->
-                torch.nn.init.normal_(linear.weight, mean=0.0, std=0.02) |> ignore
-                if isNull linear.bias |> not then
-                    torch.nn.init.zeros_(linear.bias) |> ignore
-            | :? Modules.Embedding as embedding ->
-                torch.nn.init.normal_(embedding.weight, mean=0.0, std=0.02) |> ignore
-            | :? Modules.LayerNorm as norm ->
-                torch.nn.init.zeros_(norm.bias) |> ignore
-                torch.nn.init.ones_(norm.weight) |> ignore
-            | _ -> ()
+    let init_weights : nn.Module -> _ = function
+        | :? Linear as linear ->
+            torch.nn.init.normal_(linear.weight, mean=0.0, std=0.02) |> ignore
+            if isNull linear.bias |> not then
+                torch.nn.init.zeros_(linear.bias) |> ignore
+        | :? Embedding as embedding ->
+            torch.nn.init.normal_(embedding.weight, mean=0.0, std=0.02) |> ignore
+        | :? LayerNorm as norm ->
+            torch.nn.init.zeros_(norm.bias) |> ignore
+            torch.nn.init.ones_(norm.weight) |> ignore
+        | _ -> ()
 
     do
         self.RegisterComponents()
 
         // init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
-        self.apply(_init_weights) |> ignore
+        self.apply(init_weights) |> ignore
         for pn, p in self.named_parameters() do
             if pn.EndsWith("c_proj.weight") then
                 torch.nn.init.normal_(p, mean=0.0, std=0.02/Math.Sqrt(2.0 * float config.n_layer)) |> ignore
@@ -198,22 +194,6 @@ type GPT(config) as self =
         // report number of parameters (note we don't count the decoder parameters in lm_head)
         let n_params = Seq.sum [ for p in transformer.parameters() -> p.numel() ]
         printfn "number of parameters: %d" n_params
-
-    static member get_default_config() =
-        {
-            // either model_type or (n_layer, n_head, n_embd) must be given in the config
-            model_type = "gpt"
-            n_layer = -1
-            n_head = -1
-            n_embd =  -1
-            // these options must be filled in externally
-            vocab_size = -1
-            block_size = -1
-            // dropout hyperparameters
-            embd_pdrop = 0.1
-            resid_pdrop = 0.1
-            attn_pdrop = 0.1
-        }
 
     /// This long function is unfortunately doing something very simple and is being very defensive:
     /// We are separating out all parameters of the model into two buckets: those that will experience
@@ -239,11 +219,11 @@ type GPT(config) as self =
                     decay, Set.add fpn no_decay
                 elif fpn.EndsWith("weight") then
                     match m with
-                        | :? Modules.Linear ->
+                        | :? Linear ->
                             // weights will be weight decayed
                             Set.add fpn decay, no_decay
-                        | :? Modules.LayerNorm
-                        | :? Modules.Embedding ->
+                        | :? LayerNorm
+                        | :? Embedding ->
                             // weights will NOT be weight decayed
                             decay, Set.add fpn no_decay
                         | _ -> decay, no_decay
@@ -259,12 +239,12 @@ type GPT(config) as self =
         // create the pytorch optimizer object
         let optim_groups =
             [
-                Modules.AdamW.ParamGroup(
+                AdamW.ParamGroup(
                     [ for pn in decay -> param_dict[pn] ],
-                    Modules.AdamW.Options(weight_decay=train_config.weight_decay))
-                Modules.AdamW.ParamGroup(
+                    AdamW.Options(weight_decay=train_config.weight_decay))
+                AdamW.ParamGroup(
                     [ for pn in no_decay -> param_dict[pn] ],
-                    Modules.AdamW.Options(weight_decay=0.0))
+                    AdamW.Options(weight_decay=0.0))
             ]
         let beta1, beta2 = train_config.betas
         let optimizer = torch.optim.AdamW(optim_groups, lr=train_config.learning_rate, beta1=beta1, beta2=beta2)
