@@ -57,6 +57,7 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
         linear.weight.normal_(mean = 0.0, std = 0.02) |> ignore
         if hasBias then
             linear.bias.zero_() |> ignore
+        else assert(isNull linear.bias)
 
     override _.forward(inp) = inp --> linear
 
@@ -68,7 +69,7 @@ type Projection(inputSize, outputSize, numLayer) as self =
     do
         self.RegisterComponents()
 
-        linear.weight.normal_(
+        linear.weight.normal_(   // apply a special scaled init to the residual projections, per GPT-2 paper
             mean = 0.0,
             std = 0.02 / sqrt (2.0 * float numLayer))
             |> ignore
