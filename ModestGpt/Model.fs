@@ -140,9 +140,10 @@ type Transformer(config) as self =
     let wte = nn.Embedding(config.VocabSize, config.NumEmbed)
     let wpe = nn.Embedding(config.BlockSize, config.NumEmbed)
     let pipeline =
-        let blocks : nn.Module<_, _>[] =
-            Array.init config.NumLayer (fun _ ->
-                new TransformerBlock(config))
+        let blocks =
+            Seq.init config.NumLayer (fun _ ->
+                new TransformerBlock(config)
+                    :> nn.Module<_, _>)
         nn.Sequential(
             nn.Dropout(config.Dropout),
             nn.Sequential(blocks),
@@ -150,14 +151,14 @@ type Transformer(config) as self =
 
     do self.RegisterComponents()
 
-    override _.forward(idx) =
-        let device = idx.device
-        let b, t = Tuple2.ofArray idx.shape
+    override _.forward(inp) =
+        let device = inp.device
+        let b, t = Tuple2.ofArray inp.shape
         if t > config.BlockSize then
             failwith $"Cannot forward sequence of length {t}, block size is only {config.BlockSize}"
         let pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) // shape (1, t)
 
-        let tok_emb = idx --> wte // token embeddings of shape (b, t, n_embd)
+        let tok_emb = inp --> wte // token embeddings of shape (b, t, n_embd)
         let pos_emb = pos --> wpe // position embeddings of shape (1, t, n_embd)
         (tok_emb + pos_emb) --> pipeline
 
@@ -166,32 +167,8 @@ type GPT(config) as self =
     inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
 
     do
-        assert(config.vocab_size > 0)
-        assert(config.block_size > 0)
-
-    let type_given = String.IsNullOrWhiteSpace(config.model_type) |> not
-    let params_given = config.n_layer > 0 && config.n_head > 0 && config.n_embd > 0
-    do assert (type_given <> params_given) // exactly one of these (XOR)
-    let config =
-        if type_given then
-            // translate from model_type to detailed configuration
-            match config.model_type with
-                // names follow the huggingface naming conventions
-                // GPT-1
-                | "openai-gpt" ->  { config with n_layer=12; n_head=12; n_embd= 768 } //  117M params
-                // GPT-2 configs
-                | "gpt2" ->        { config with n_layer=12; n_head=12; n_embd= 768 } //  124M params
-                | "gpt2-medium" -> { config with n_layer=24; n_head=16; n_embd=1024 } //  350M params
-                | "gpt2-large" ->  { config with n_layer=36; n_head=20; n_embd=1280 } //  774M params
-                | "gpt2-xl"  ->    { config with n_layer=48; n_head=25; n_embd=1600 } // 1558M params
-                // Gophers
-                | "gopher-44m" ->  { config with n_layer= 8; n_head=16; n_embd= 512 }
-                // (there are a number more...)
-                // I made these tiny models up
-                | "gpt-mini" ->    { config with n_layer= 6; n_head= 6; n_embd= 192 }
-                | "gpt-micro" ->   { config with n_layer= 4; n_head= 4; n_embd= 128 }
-                | "gpt-nano" ->    { config with n_layer= 3; n_head= 3; n_embd=  48 }
-        else config
+        assert(config.VocabSize > 0)
+        assert(config.BlockSize > 0)
 
     let transformer = new Transformer(config)
     let lm_head = nn.Linear(config.n_embd, config.vocab_size, hasBias=false)
