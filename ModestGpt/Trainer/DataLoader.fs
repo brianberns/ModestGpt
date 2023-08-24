@@ -6,17 +6,17 @@ open TorchSharp
 open type torch
 open type utils.data
 
-type MinDataset = utils.data.Dataset<Tensor * Tensor>
+type Dataset = Dataset<Tensor * Tensor>
 
 /// Minimal data loader.
-type DataLoader(dataset : MinDataset, batch_size, ?shuffle, ?num_worker, ?drop_last) =
+type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?numWorker, ?dropLast) =
     inherit DataLoader<Tensor * Tensor, Tensor * Tensor>(
         dataset,
-        batch_size,
+        batchSize,
         DataLoader.Collate,
         ?shuffle = shuffle,
-        ?num_worker = num_worker,
-        ?drop_last = drop_last)
+        ?num_worker = numWorker,
+        ?drop_last = dropLast)
 
     static let collate f items (device : Device) =
         let tensors =
