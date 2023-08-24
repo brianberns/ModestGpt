@@ -49,16 +49,14 @@ type Projection(inputSize, outputSize, dropout) as self =
     inherit BaseModule("Projection")
 
     let linear = nn.Linear(inputSize, outputSize)
-    let sequential =
-        nn.Sequential(
-            linear,
-            nn.Dropout(dropout))
+    let dropout = nn.Dropout(dropout)
 
     do self.RegisterComponents()
 
     member internal _.Linear = linear
 
-    override _.forward(inp) = inp --> sequential
+    override _.forward(inp) =
+        inp --> linear --> dropout
 
 /// Causal: only looks at previous tokens.
 type CausalSelfAttention(config) as self =
