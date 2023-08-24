@@ -16,8 +16,6 @@ type Projection(inputSize, config) as self =
         Init.normal std linear.weight
         Init.zeros linear.bias
 
-        nn.init.zeros_(linear.bias) |> ignore
-
     interface IWeightDecay with
         member _.ParameterSettings with get() =
             WeightDecay.ofLinear linear

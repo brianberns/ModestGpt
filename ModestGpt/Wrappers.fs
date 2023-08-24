@@ -40,9 +40,7 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
     do
         self.RegisterComponents()
         Init.normal 0.02 linear.weight
-        if hasBias then
-            Init.zeros linear.bias
-        else assert(isNull linear.bias)
+        if hasBias then Init.zeros linear.bias
 
     interface IWeightDecay with
         member _.ParameterSettings with get() =
