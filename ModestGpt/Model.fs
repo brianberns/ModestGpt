@@ -3,6 +3,7 @@
 open System
 
 open TorchSharp
+open TorchSharp.Modules
 open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
@@ -50,6 +51,8 @@ type Projection(inputSize, outputSize) as self =
     let linear = nn.Linear(inputSize, outputSize)
 
     do self.RegisterComponents()
+
+    member internal _.Linear = linear
 
     override _.forward(inp) = inp --> linear
 
@@ -182,7 +185,33 @@ type Gpt(config) as self =
     let transformer = new Transformer(config)
     let lm_head = nn.Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
-    do self.RegisterComponents()
+    let initWeight : nn.Module -> _ = function
+
+        | :? Projection as proj ->   // special scaled init to the residual projections, per GPT-2 paper
+            let linear = proj.Linear
+            nn.init.normal_(
+                linear.weight,
+                mean = 0.0,
+                std = 0.02 / sqrt (2.0 * float config.NumLayer)) |> ignore
+            linear.bias |> nn.init.zeros_ |> ignore
+
+        | :? Linear as linear ->
+            nn.init.normal_(linear.weight, mean = 0.0, std = 0.02) |> ignore
+            if isNull linear.bias |> not then
+                linear.bias |> nn.init.zeros_ |> ignore
+
+        | :? Embedding as embedding ->
+            nn.init.normal_(embedding.weight, mean = 0.0, std = 0.02) |> ignore
+
+        | :? LayerNorm as norm ->
+            norm.bias |> nn.init.zeros_ |> ignore
+            norm.weight |> nn.init.ones_ |> ignore
+
+        | _ -> ()
+
+    do
+        self.RegisterComponents()
+        self.apply(initWeight) |> ignore
 
     member _.forward(idx) =
         idx --> transformer --> lm_head
