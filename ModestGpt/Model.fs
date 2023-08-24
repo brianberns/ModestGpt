@@ -44,6 +44,15 @@ type ModelConfig =
 
 type BaseModule = nn.Module<Tensor, Tensor>
 
+type Projection(inputSize, outputSize) as self =
+    inherit BaseModule("Projection")
+
+    let linear = nn.Linear(inputSize, outputSize)
+
+    do self.RegisterComponents()
+
+    override _.forward(inp) = inp --> linear
+
 /// Causal: only looks at previous tokens.
 type CausalSelfAttention(config) as self =
     inherit BaseModule("CausalSelfAttention")
@@ -64,10 +73,10 @@ type CausalSelfAttention(config) as self =
     let dropout = nn.Dropout(config.Dropout)
 
         // output projection
-    let outSeq =
-        nn.Sequential [|
-            "proj", nn.Linear(config.NumEmbed, config.NumEmbed) :> BaseModule
-            "dropout", nn.Dropout(config.Dropout) |]
+    let outProj =
+        nn.Sequential(
+            new Projection(config.NumEmbed, config.NumEmbed),
+            nn.Dropout(config.Dropout))
 
     do self.RegisterComponents()
 
@@ -103,18 +112,18 @@ type CausalSelfAttention(config) as self =
             .transpose(1, 2)
             .contiguous()
             .view(B, T, C) // re-assemble all head outputs side by side
-            --> outSeq   // output projection
+            --> outProj   // output projection
 
 type FeedForward(config) as self =
     inherit BaseModule("FeedForward")
 
     let size = 4 * config.NumEmbed
     let sequential =
-        nn.Sequential [|
-            "linear", nn.Linear(config.NumEmbed, size) :> BaseModule                       // to-do: clarify "c_fc" name
-            "activation", nn.GELU()                                               // activation layer
-            "proj", nn.Linear(size, config.NumEmbed)
-            "dropout", nn.Dropout(config.Dropout) |]                              // to-do: clarify "residual" dropout
+        nn.Sequential(
+            nn.Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
+            nn.GELU(),                                               // activation layer
+            new Projection(size, config.NumEmbed),
+            nn.Dropout(config.Dropout))                              // to-do: clarify "residual" dropout
 
     do self.RegisterComponents()
 
