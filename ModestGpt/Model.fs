@@ -45,16 +45,20 @@ type ModelConfig =
 
 type BaseModule = nn.Module<Tensor, Tensor>
 
-type Projection(inputSize, outputSize) as self =
+type Projection(inputSize, outputSize, dropout) as self =
     inherit BaseModule("Projection")
 
     let linear = nn.Linear(inputSize, outputSize)
+    let sequential =
+        nn.Sequential(
+            linear,
+            nn.Dropout(dropout))
 
     do self.RegisterComponents()
 
     member internal _.Linear = linear
 
-    override _.forward(inp) = inp --> linear
+    override _.forward(inp) = inp --> sequential
 
 /// Causal: only looks at previous tokens.
 type CausalSelfAttention(config) as self =
@@ -76,10 +80,7 @@ type CausalSelfAttention(config) as self =
     let dropout = nn.Dropout(config.Dropout)
 
         // output projection
-    let outProj =
-        nn.Sequential(
-            new Projection(config.NumEmbed, config.NumEmbed),
-            nn.Dropout(config.Dropout))
+    let outProj = new Projection(config.NumEmbed, config.NumEmbed, config.Dropout)
 
     do self.RegisterComponents()
 
@@ -125,8 +126,7 @@ type FeedForward(config) as self =
         nn.Sequential(
             nn.Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
             nn.GELU(),                                               // activation layer
-            new Projection(size, config.NumEmbed),
-            nn.Dropout(config.Dropout))                              // to-do: clarify "residual" dropout
+            new Projection(size, config.NumEmbed, config.Dropout))                              // to-do: clarify "residual" dropout
 
     do self.RegisterComponents()
 
