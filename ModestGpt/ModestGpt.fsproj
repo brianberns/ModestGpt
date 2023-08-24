@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Utils.fs" />
+    <Compile Include="Wrappers.fs" />
+    <Compile Include="CausalSelfAttention.fs" />
+    <Compile Include="Transformer.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Trainer.fs" />
   </ItemGroup>
