@@ -1,11 +1,8 @@
 ﻿namespace ModestGpt
 
-namespace MinGptSharp
-
 open System
 
 open TorchSharp
-open TorchSharp.Modules
 open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
@@ -45,10 +42,6 @@ type ModelConfig =
         NumLayer : int
     }
 
-type IWeightDecay =
-
-    abstract member ParameterSettings : seq<Parameter * bool> with get
-
 type Linear(inputSize, outputSize, ?hasBias) as self =
     inherit nn.Module<Tensor, Tensor>("Linear")
 
@@ -70,15 +63,6 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
     abstract member InitialStandardDeviation : float with get
     default _.InitialStandardDeviation with get() = 0.02
 
-    interface IWeightDecay with
-        member _.ParameterSettings
-            with get() =
-                seq {
-                    linear.weight, true
-                    if hasBias then
-                        linear.bias, false
-                }
-
     override _.forward(inp) = inp --> linear
 
 type Projection(inputSize, outputSize, numLayer) =
@@ -98,11 +82,6 @@ type Embedding(size, numEmbed) as self =
 
         embedding.weight.normal_(mean = 0.0, std = 0.02) |> ignore
 
-    interface IWeightDecay with
-        member _.ParameterSettings
-            with get() =
-                seq { embedding.weight, false }
-
     override _.forward(inp) = inp --> embedding
 
 type LayerNorm(shape : int64) as self =
@@ -116,36 +95,14 @@ type LayerNorm(shape : int64) as self =
         layerNorm.weight |> nn.init.ones_ |> ignore
         layerNorm.bias.zero_() |> ignore
 
-    interface IWeightDecay with
-        member _.ParameterSettings
-            with get() =
-                seq {
-                    layerNorm.weight, false
-                    layerNorm.bias, false
-                }
-
     override _.forward(inp) = inp --> layerNorm
-
-type Sequential([<ParamArray>] modules : nn.Module<Tensor, Tensor>[]) =
-    inherit Modules.Sequential(modules)
-
-    interface IWeightDecay with
-        member _.ParameterSettings
-            with get() =
-                seq {
-                    for m in modules do
-                        match m :> obj with
-                            | :? IWeightDecay as wd ->
-                                yield! wd.ParameterSettings
-                            | _ -> ()
-                }
 
 type FeedForward(config) as self =
     inherit nn.Module<Tensor, Tensor>("FeedForward")
 
     let size = 4 * config.NumEmbed
     let sequential =
-        new Sequential(
+        nn.Sequential(
             new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
             nn.GELU(),                                               // activation layer
             new Projection(size, config.NumEmbed, config.NumLayer),
@@ -176,7 +133,7 @@ type CausalSelfAttention(config) as self =
 
         // output projection
     let outProj =
-        new Sequential(
+        nn.Sequential(
             new Projection(config.NumEmbed, config.NumEmbed, config.NumLayer),
             nn.Dropout(config.Dropout))
 
@@ -221,11 +178,11 @@ type TransformerBlock(config) as self =
     inherit nn.Module<Tensor, Tensor>("TransformerBlock")
 
     let layer1 =
-        new Sequential(
+        nn.Sequential(
             new LayerNorm(config.NumEmbed),
             new CausalSelfAttention(config))
     let layer2 =
-        new Sequential(
+        nn.Sequential(
             new LayerNorm(config.NumEmbed),
             new FeedForward(config))
 
@@ -245,9 +202,9 @@ type Transformer(config) as self =
             Array.init config.NumLayer (fun _ ->
                 new TransformerBlock(config)
                     :> nn.Module<_, _>)
-        new Sequential(
+        nn.Sequential(
             nn.Dropout(config.Dropout),
-            new Sequential(blocks),
+            nn.Sequential(blocks),
             new LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
@@ -264,7 +221,7 @@ type Transformer(config) as self =
         (tok_emb + pos_emb) --> sequential
 
 /// GPT Language Model
-type GPT(config) as self =
+type Gpt(config) as self =
     inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
 
     let transformer = new Transformer(config)
@@ -286,6 +243,7 @@ type GPT(config) as self =
 
         logits, loss
 
+    (*
     /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     /// the sequence max_new_tokens times, feeding the predictions back into the model each time.
     /// Most likely you'll want to make sure to be in model.eval() mode of operation for this.
@@ -321,3 +279,4 @@ type GPT(config) as self =
                             idx_next
                     // append sampled index to the running sequence and continue
                     torch.cat([|idx; idx_next|], dim=1).DetachFromDisposeScope()))
+    *)
