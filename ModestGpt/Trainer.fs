@@ -28,43 +28,23 @@ module Trainer =
     let createOptimizer (model : Gpt) config =
 
         // separate out all parameters to those that will and won't experience regularizing weight decay
-        let decayMap =
-            seq {
-                for mdule in model.modules() do
-                    let pairs = mdule.named_parameters(recurse = false)
-                    for struct (parmName, parm) in pairs do
-                        match parmName with
-                            | EndsWith("bias") -> parm, false
-                            | EndsWith("weight") ->
-                                match mdule with
-                                    | :? Modules.Linear -> parm, true
-                                    | :? Modules.LayerNorm
-                                    | :? Modules.Embedding -> parm, false
-                                    | _ -> failwith "Unexpected"
-                            | _ -> failwith "Unexpected"
-            }
-                |> Seq.groupBy snd
-                |> Seq.map (fun (decay, group) ->
-                    let parms =
-                        group
-                            |> Seq.map fst
-                            |> Seq.toArray
-                    decay, parms)
-                |> Map
-        assert(
-            (decayMap.Values |> Seq.concat |> Seq.length) =
-                (model.named_parameters() |> Seq.length))
-
-        // create the pytorch optimizer object
         let parmGroups =
-            seq {
-                AdamW.ParamGroup(
-                    decayMap[true],
-                    AdamW.Options(weight_decay = config.WeightDecay))
-                AdamW.ParamGroup(
-                    decayMap[false],
-                    AdamW.Options(weight_decay = 0.0))
-            }
+            [|
+                for mdule in model.modules() do
+                    match mdule :> obj with
+                        | :? IWeightDecay as module' ->
+                            for parm, setting in module'.ParameterSettings do
+                                printfn $"{mdule} {parm}: {setting}"
+                                AdamW.ParamGroup(
+                                    [ parm ],
+                                    AdamW.Options(
+                                        weight_decay =
+                                            if setting then config.WeightDecay
+                                            else 0.0))
+                        | _ -> ()
+            |]
+        assert(parmGroups.Length = 
+            (model.named_parameters() |> Seq.length))
         torch.optim.AdamW(
             parmGroups,
             config.LearningRate,
@@ -73,7 +53,6 @@ module Trainer =
 
     [<EntryPoint>]
     let main args =
-
         use model =
             new Gpt {
                 NumLayer = 3
@@ -83,9 +62,6 @@ module Trainer =
                 BlockSize = 6 * 2 - 1
                 Dropout = 0.1
             }
-        for name, parm in model.named_parameters() do
-            printfn $"{name}: {parm}"
-
         let optim =
             createOptimizer model
                 {
@@ -99,5 +75,4 @@ module Trainer =
                     WeightDecay = 0.1 // only applied on matmul weights
                     GradNormClip = 1.0
                 }
-        printfn "%A" optim
         0

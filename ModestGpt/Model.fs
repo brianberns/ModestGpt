@@ -45,18 +45,106 @@ type ModelConfig =
 
 type BaseModule = nn.Module<Tensor, Tensor>
 
-type Projection(inputSize, outputSize, dropout) as self =
+type IWeightDecay =
+    abstract member ParameterSettings : seq<Parameter * bool> with get
+
+module WeightDecay =
+
+    let ofLinear (linear : Linear) =
+        seq {
+            linear.weight, true
+            if not (isNull linear.bias) then
+                linear.bias, false
+        }
+
+type Linear(inputSize, outputSize, ?hasBias) as self =
+    inherit BaseModule("Linear")
+
+    let hasBias = defaultArg hasBias true
+    let linear = nn.Linear(inputSize, outputSize, hasBias)
+
+    do
+        self.RegisterComponents()
+
+        nn.init.normal_(
+            linear.weight,
+            mean = 0.0,
+            std = 0.02) |> ignore
+
+        if hasBias then
+            nn.init.zeros_(linear.bias) |> ignore
+        else assert(isNull linear.bias)
+
+    interface IWeightDecay with
+        member _.ParameterSettings with get() =
+            WeightDecay.ofLinear linear
+
+    override _.forward(inp) = inp --> linear
+
+type Projection(inputSize, config) as self =
     inherit BaseModule("Projection")
 
-    let linear = nn.Linear(inputSize, outputSize)
-    let dropout = nn.Dropout(dropout)
+    let linear = nn.Linear(inputSize, config.NumEmbed)
+    let dropout = nn.Dropout(config.Dropout)
 
-    do self.RegisterComponents()
+    do
+        self.RegisterComponents()
 
-    member internal _.Linear = linear
+        let std = 0.02 / sqrt (2.0 * float config.NumLayer)   // apply a special scaled init to the residual projections, per GPT-2 paper
 
-    override _.forward(inp) =
-        inp --> linear --> dropout
+        nn.init.normal_(
+            linear.weight,
+            mean = 0.0,
+            std = std) |> ignore
+
+        nn.init.zeros_(linear.bias) |> ignore
+
+    interface IWeightDecay with
+        member _.ParameterSettings with get() =
+            WeightDecay.ofLinear linear
+
+    override _.forward(inp) = inp --> linear --> dropout
+
+type Embedding(size, numEmbed) as self =
+    inherit BaseModule("Linear")
+
+    let embedding = nn.Embedding(size, numEmbed)
+
+    do
+        self.RegisterComponents()
+
+        nn.init.normal_(
+            embedding.weight,
+            mean = 0.0,
+            std = 0.02) |> ignore
+
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq { embedding.weight, false }
+
+    override _.forward(inp) = inp --> embedding
+
+type LayerNorm(shape : int64) as self =
+    inherit BaseModule("LayerNorm")
+
+    let layerNorm = nn.LayerNorm(shape)
+
+    do
+        self.RegisterComponents()
+
+        nn.init.ones_(layerNorm.weight) |> ignore
+        nn.init.zeros_(layerNorm.bias) |> ignore
+
+    interface IWeightDecay with
+        member _.ParameterSettings
+            with get() =
+                seq {
+                    layerNorm.weight, false
+                    layerNorm.bias, false
+                }
+
+    override _.forward(inp) = inp --> layerNorm
 
 /// Causal: only looks at previous tokens.
 type CausalSelfAttention(config) as self =
@@ -66,7 +154,7 @@ type CausalSelfAttention(config) as self =
     do assert(config.NumEmbed % config.NumHead = 0)
 
         // query, key, value projections for all heads, but in a batch
-    let inpProj = nn.Linear(config.NumEmbed, 3L * int64 config.NumEmbed)
+    let inpProj = new Linear(config.NumEmbed, 3L * int64 config.NumEmbed)
 
         // causal mask to ensure that attention is only applied to the left in the input sequence
     let bias =
@@ -78,7 +166,7 @@ type CausalSelfAttention(config) as self =
     let dropout = nn.Dropout(config.Dropout)
 
         // output projection
-    let outProj = new Projection(config.NumEmbed, config.NumEmbed, config.Dropout)
+    let outProj = new Projection(config.NumEmbed, config)
 
     do self.RegisterComponents()
 
@@ -122,9 +210,9 @@ type FeedForward(config) as self =
     let size = 4 * config.NumEmbed
     let sequential =
         nn.Sequential(
-            nn.Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
+            new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
             nn.GELU(),                                               // activation layer
-            new Projection(size, config.NumEmbed, config.Dropout))                              // to-do: clarify "residual" dropout
+            new Projection(size, config))                              // to-do: clarify "residual" dropout
 
     do self.RegisterComponents()
 
@@ -136,11 +224,11 @@ type TransformerBlock(config) as self =
 
     let layer1 =
         nn.Sequential(
-            nn.LayerNorm(config.NumEmbed),
+            new LayerNorm(config.NumEmbed),
             new CausalSelfAttention(config))
     let layer2 =
         nn.Sequential(
-            nn.LayerNorm(config.NumEmbed),
+            new LayerNorm(config.NumEmbed),
             new FeedForward(config))
 
     do self.RegisterComponents()
@@ -152,8 +240,8 @@ type TransformerBlock(config) as self =
 type Transformer(config) as self =
     inherit BaseModule("Transformer")
 
-    let wte = nn.Embedding(config.VocabSize, config.NumEmbed)
-    let wpe = nn.Embedding(config.BlockSize, config.NumEmbed)
+    let wte = new Embedding(config.VocabSize, config.NumEmbed)
+    let wpe = new Embedding(config.BlockSize, config.NumEmbed)
     let sequential =
         let blocks =
             Array.init config.NumLayer (fun _ ->
@@ -161,7 +249,7 @@ type Transformer(config) as self =
         nn.Sequential(
             nn.Dropout(config.Dropout),
             nn.Sequential(blocks),
-            nn.LayerNorm(config.NumEmbed))
+            new LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
 
@@ -181,35 +269,9 @@ type Gpt(config) as self =
     inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
 
     let transformer = new Transformer(config)
-    let lm_head = nn.Linear(config.NumEmbed, config.VocabSize, hasBias = false)
+    let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
-    let initWeight : nn.Module -> _ = function
-
-        | :? Projection as proj ->   // special scaled init to the residual projections, per GPT-2 paper
-            let linear = proj.Linear
-            nn.init.normal_(
-                linear.weight,
-                mean = 0.0,
-                std = 0.02 / sqrt (2.0 * float config.NumLayer)) |> ignore
-            linear.bias |> nn.init.zeros_ |> ignore
-
-        | :? Linear as linear ->
-            nn.init.normal_(linear.weight, mean = 0.0, std = 0.02) |> ignore
-            if isNull linear.bias |> not then
-                linear.bias |> nn.init.zeros_ |> ignore
-
-        | :? Embedding as embedding ->
-            nn.init.normal_(embedding.weight, mean = 0.0, std = 0.02) |> ignore
-
-        | :? LayerNorm as norm ->
-            norm.bias |> nn.init.zeros_ |> ignore
-            norm.weight |> nn.init.ones_ |> ignore
-
-        | _ -> ()
-
-    do
-        self.RegisterComponents()
-        self.apply(initWeight) |> ignore
+    do self.RegisterComponents()
 
     member _.forward(idx) =
         idx --> transformer --> lm_head
