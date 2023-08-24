@@ -83,6 +83,8 @@ module Trainer =
                 BlockSize = 6 * 2 - 1
                 Dropout = 0.1
             }
+        for name, parm in model.named_parameters() do
+            printfn $"{name}: {parm}"
 
         let optim =
             createOptimizer model

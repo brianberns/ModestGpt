@@ -42,30 +42,17 @@ type ModelConfig =
         NumLayer : int
     }
 
-type FeedForward(config) as self =
-    inherit nn.Module<Tensor, Tensor>("FeedForward")
-
-    let size = 4 * config.NumEmbed
-    let sequential =
-        nn.Sequential(
-            new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
-            nn.GELU(),                                               // activation layer
-            new Projection(size, config.NumEmbed, config.NumLayer),
-            nn.Dropout(config.Dropout))                              // to-do: clarify "residual" dropout
-
-    do self.RegisterComponents()
-
-    override _.forward(inp) = inp --> sequential
+type BaseModule = nn.Module<Tensor, Tensor>
 
 /// Causal: only looks at previous tokens.
 type CausalSelfAttention(config) as self =
-    inherit nn.Module<Tensor, Tensor>("CausalSelfAttention")
+    inherit BaseModule("CausalSelfAttention")
 
     let blockSize = config.BlockSize
     do assert(config.NumEmbed % config.NumHead = 0)
 
         // query, key, value projections for all heads, but in a batch
-    let inpProj = new Linear(config.NumEmbed, 3L * int64 config.NumEmbed)
+    let inpProj = nn.Linear(config.NumEmbed, 3L * int64 config.NumEmbed)
 
         // causal mask to ensure that attention is only applied to the left in the input sequence
     let bias =
@@ -77,10 +64,10 @@ type CausalSelfAttention(config) as self =
     let dropout = nn.Dropout(config.Dropout)
 
         // output projection
-    let outProj =
-        nn.Sequential(
-            new Projection(config.NumEmbed, config.NumEmbed, config.NumLayer),
-            nn.Dropout(config.Dropout))
+    let outSeq =
+        nn.Sequential [|
+            "proj", nn.Linear(config.NumEmbed, config.NumEmbed) :> BaseModule
+            "dropout", nn.Dropout(config.Dropout) |]
 
     do self.RegisterComponents()
 
@@ -116,19 +103,34 @@ type CausalSelfAttention(config) as self =
             .transpose(1, 2)
             .contiguous()
             .view(B, T, C) // re-assemble all head outputs side by side
-            --> outProj   // output projection
+            --> outSeq   // output projection
+
+type FeedForward(config) as self =
+    inherit BaseModule("FeedForward")
+
+    let size = 4 * config.NumEmbed
+    let sequential =
+        nn.Sequential [|
+            "linear", nn.Linear(config.NumEmbed, size) :> BaseModule                       // to-do: clarify "c_fc" name
+            "activation", nn.GELU()                                               // activation layer
+            "proj", nn.Linear(size, config.NumEmbed)
+            "dropout", nn.Dropout(config.Dropout) |]                              // to-do: clarify "residual" dropout
+
+    do self.RegisterComponents()
+
+    override _.forward(inp) = inp --> sequential
 
 /// Transformer decoder block.
 type TransformerBlock(config) as self =
-    inherit nn.Module<Tensor, Tensor>("TransformerBlock")
+    inherit BaseModule("TransformerBlock")
 
     let layer1 =
         nn.Sequential(
-            new LayerNorm(config.NumEmbed),
+            nn.LayerNorm(config.NumEmbed),
             new CausalSelfAttention(config))
     let layer2 =
         nn.Sequential(
-            new LayerNorm(config.NumEmbed),
+            nn.LayerNorm(config.NumEmbed),
             new FeedForward(config))
 
     do self.RegisterComponents()
@@ -138,19 +140,18 @@ type TransformerBlock(config) as self =
         x + (x --> layer2)
 
 type Transformer(config) as self =
-    inherit nn.Module<Tensor, Tensor>("Transformer")
+    inherit BaseModule("Transformer")
 
-    let wte = new Embedding(config.VocabSize, config.NumEmbed)
-    let wpe = new Embedding(config.BlockSize, config.NumEmbed)
+    let wte = nn.Embedding(config.VocabSize, config.NumEmbed)
+    let wpe = nn.Embedding(config.BlockSize, config.NumEmbed)
     let sequential =
         let blocks =
             Array.init config.NumLayer (fun _ ->
-                new TransformerBlock(config)
-                    :> nn.Module<_, _>)
+                new TransformerBlock(config) :> BaseModule)
         nn.Sequential(
             nn.Dropout(config.Dropout),
             nn.Sequential(blocks),
-            new LayerNorm(config.NumEmbed))
+            nn.LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
 
@@ -170,7 +171,7 @@ type Gpt(config) as self =
     inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
 
     let transformer = new Transformer(config)
-    let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
+    let lm_head = nn.Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
     do self.RegisterComponents()
 
