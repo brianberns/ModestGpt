@@ -28,14 +28,4 @@ module Tuple3 =
         | [| a; b; c |] -> a, b, c
         | array -> failwith $"Unexpected array length: {array.Length}"
 
-type ModelConfig =
-    {
-        NumEmbed : int
-        NumHead : int
-        BlockSize : int
-        Dropout : float
-        VocabSize : int
-        NumLayer : int
-    }
-
 type BaseModule = nn.Module<Tensor, Tensor>

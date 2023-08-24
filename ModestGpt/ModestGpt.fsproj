@@ -9,6 +9,8 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="Wrappers.fs" />
+    <Compile Include="ModelConfig.fs" />
+    <Compile Include="Projection.fs" />
     <Compile Include="CausalSelfAttention.fs" />
     <Compile Include="Transformer.fs" />
     <Compile Include="Model.fs" />
