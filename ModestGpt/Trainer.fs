@@ -31,7 +31,8 @@ module Trainer =
         let decayMap =
             seq {
                 for mdule in model.modules() do
-                    for struct (parmName, parm) in mdule.named_parameters() do
+                    let pairs = mdule.named_parameters(recurse = false)
+                    for struct (parmName, parm) in pairs do
                         match parmName with
                             | EndsWith("bias") -> parm, false
                             | EndsWith("weight") ->
@@ -50,6 +51,9 @@ module Trainer =
                             |> Seq.toArray
                     decay, parms)
                 |> Map
+        assert(
+            (decayMap.Values |> Seq.concat |> Seq.length) =
+                (model.named_parameters() |> Seq.length))
 
         // create the pytorch optimizer object
         let parmGroups =
@@ -66,3 +70,32 @@ module Trainer =
             config.LearningRate,
             config.Beta1,
             config.Beta2)
+
+    [<EntryPoint>]
+    let main args =
+
+        use model =
+            new Gpt {
+                NumLayer = 3
+                NumHead = 3
+                NumEmbed =  48
+                VocabSize = 3
+                BlockSize = 6 * 2 - 1
+                Dropout = 0.1
+            }
+
+        let optim =
+            createOptimizer model
+                {
+                    Device = "auto"
+                    NumWorkers = 4
+                    MaxIters = 0
+                    BatchSize = 64
+                    LearningRate = 3e-4
+                    Beta1 = 0.9
+                    Beta2 = 0.95
+                    WeightDecay = 0.1 // only applied on matmul weights
+                    GradNormClip = 1.0
+                }
+        printfn "%A" optim
+        0
