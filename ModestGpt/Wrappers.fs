@@ -5,6 +5,20 @@ open type torch
 open TorchSharp.Modules
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
+module Init =
+
+    let normal std tensor =
+        nn.init.normal_(
+            tensor,
+            mean = 0.0,
+            std = std) |> ignore
+
+    let zeros tensor =
+        nn.init.zeros_(tensor) |> ignore
+
+    let ones tensor =
+        nn.init.ones_(tensor) |> ignore
+
 type IWeightDecay =
     abstract member ParameterSettings : seq<Parameter * bool> with get
 
@@ -25,14 +39,9 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
 
     do
         self.RegisterComponents()
-
-        nn.init.normal_(
-            linear.weight,
-            mean = 0.0,
-            std = 0.02) |> ignore
-
+        Init.normal 0.02 linear.weight
         if hasBias then
-            nn.init.zeros_(linear.bias) |> ignore
+            Init.zeros linear.bias
         else assert(isNull linear.bias)
 
     interface IWeightDecay with
@@ -48,11 +57,7 @@ type Embedding(size, numEmbed) as self =
 
     do
         self.RegisterComponents()
-
-        nn.init.normal_(
-            embedding.weight,
-            mean = 0.0,
-            std = 0.02) |> ignore
+        Init.normal 0.02 embedding.weight
 
     interface IWeightDecay with
         member _.ParameterSettings
@@ -68,9 +73,8 @@ type LayerNorm(shape : int64) as self =
 
     do
         self.RegisterComponents()
-
-        nn.init.ones_(layerNorm.weight) |> ignore
-        nn.init.zeros_(layerNorm.bias) |> ignore
+        Init.ones layerNorm.weight
+        Init.zeros layerNorm.bias
 
     interface IWeightDecay with
         member _.ParameterSettings

@@ -12,13 +12,9 @@ type Projection(inputSize, config) as self =
 
     do
         self.RegisterComponents()
-
         let std = 0.02 / sqrt (2.0 * float config.NumLayer)   // apply a special scaled init to the residual projections, per GPT-2 paper
-
-        nn.init.normal_(
-            linear.weight,
-            mean = 0.0,
-            std = std) |> ignore
+        Init.normal std linear.weight
+        Init.zeros linear.bias
 
         nn.init.zeros_(linear.bias) |> ignore
 
