@@ -7,6 +7,8 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
 
+type BaseModule = nn.Module<Tensor, Tensor>
+
 module Init =
 
     let normal std tensor =

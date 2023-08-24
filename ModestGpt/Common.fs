@@ -27,5 +27,3 @@ module Tuple3 =
     let ofArray = function
         | [| a; b; c |] -> a, b, c
         | array -> failwith $"Unexpected array length: {array.Length}"
-
-type BaseModule = nn.Module<Tensor, Tensor>
