@@ -42,61 +42,6 @@ type ModelConfig =
         NumLayer : int
     }
 
-type Linear(inputSize, outputSize, ?hasBias) as self =
-    inherit nn.Module<Tensor, Tensor>("Linear")
-
-    let hasBias = defaultArg hasBias true
-    let linear = nn.Linear(inputSize, outputSize, hasBias)
-
-    do
-        self.RegisterComponents()
-
-        linear.weight.normal_(
-            mean = 0.0,
-            std = self.InitialStandardDeviation)
-                |> ignore
-
-        if hasBias then
-            linear.bias.zero_() |> ignore
-        else assert(isNull linear.bias)
-
-    abstract member InitialStandardDeviation : float with get
-    default _.InitialStandardDeviation with get() = 0.02
-
-    override _.forward(inp) = inp --> linear
-
-type Projection(inputSize, outputSize, numLayer) =
-    inherit Linear(inputSize, outputSize)
-
-    override _.InitialStandardDeviation
-        with get() =
-            base.InitialStandardDeviation / sqrt (2.0 * float numLayer)   // apply a special scaled init to the residual projections, per GPT-2 paper
-
-type Embedding(size, numEmbed) as self =
-    inherit nn.Module<Tensor, Tensor>("Linear")
-
-    let embedding = nn.Embedding(size, numEmbed)
-
-    do
-        self.RegisterComponents()
-
-        embedding.weight.normal_(mean = 0.0, std = 0.02) |> ignore
-
-    override _.forward(inp) = inp --> embedding
-
-type LayerNorm(shape : int64) as self =
-    inherit nn.Module<Tensor, Tensor>("LayerNorm")
-
-    let layerNorm = nn.LayerNorm(shape)
-
-    do
-        self.RegisterComponents()
-
-        layerNorm.weight |> nn.init.ones_ |> ignore
-        layerNorm.bias.zero_() |> ignore
-
-    override _.forward(inp) = inp --> layerNorm
-
 type FeedForward(config) as self =
     inherit nn.Module<Tensor, Tensor>("FeedForward")
 
