@@ -1,9 +1,11 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Model
 
 open TorchSharp
 open type torch
 open TorchSharp.Modules
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+open ModestGpt
 
 module Init =
 

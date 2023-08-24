@@ -1,7 +1,9 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Model
 
 open TorchSharp
 open type torch
+
+open ModestGpt
 
 type FeedForward(config) as self =
     inherit BaseModule("FeedForward")

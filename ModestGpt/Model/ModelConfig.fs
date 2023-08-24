@@ -1,4 +1,4 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Model
 
 type ModelConfig =
     {

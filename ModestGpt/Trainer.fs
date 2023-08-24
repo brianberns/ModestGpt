@@ -1,10 +1,13 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Trainer
 
 open TorchSharp
 open TorchSharp.Modules
 open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+open ModestGpt
+open ModestGpt.Model
 
 type TrainerConfig =
     {
@@ -57,7 +60,7 @@ module Trainer =
             new Gpt {
                 NumLayer = 3
                 NumHead = 3
-                NumEmbed =  48
+                NumEmbed = 48
                 VocabSize = 3
                 BlockSize = 6 * 2 - 1
                 Dropout = 0.1

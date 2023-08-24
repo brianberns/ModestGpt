@@ -1,8 +1,10 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Model
 
 open TorchSharp
 open type torch
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+open ModestGpt
 
 type Projection(inputSize, config) as self =
     inherit BaseModule("Projection")

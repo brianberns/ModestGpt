@@ -1,8 +1,10 @@
-﻿namespace ModestGpt
+﻿namespace ModestGpt.Model
 
 open TorchSharp
 open type torch
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+open ModestGpt
 
 /// GPT Language Model
 type Gpt(config) as self =
@@ -13,17 +15,20 @@ type Gpt(config) as self =
 
     do self.RegisterComponents()
 
-    member _.forward(idx) =
-        idx --> transformer --> lm_head
+    member _.forward(inp) =
+        inp --> transformer --> lm_head
 
-    override _.forward(idx, targets) =
+    override _.forward(inp, targets) =
 
         // forward the GPT model itself
-        let logits = self.forward(idx)
+        let logits = self.forward(inp)
 
         // calculate the loss
         let loss =
-            nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index = -1)
+            nn.functional.cross_entropy(
+                logits.view(-1, logits.size(-1)),
+                targets.view(-1),
+                ignore_index = -1)
 
         logits, loss
 
