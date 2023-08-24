@@ -95,7 +95,8 @@ module Trainer =
 
                     let tnow = DateTime.Now
                     let iter_dt = tnow - iterTime
-                    printfn $"iter {iterNum}: loss {loss.item<float32>()}"
+                    if iterNum % 100 = 0 then
+                        printfn $"iter {iterNum}: loss {loss.item<float32>()}"
                     tnow
 
                 // termination conditions
@@ -185,6 +186,7 @@ module Program =
 
     [<EntryPoint>]
     let main args =
+        setSeed 0
         use model =
             new Gpt {
                 NumLayer = 3
@@ -196,15 +198,15 @@ module Program =
             }
         let config =
             {
-                    Device = "auto"
-                    NumWorkers = 4
-                    MaxIters = 0
-                    BatchSize = 64
-                    LearningRate = 3e-4
-                    Beta1 = 0.9
-                    Beta2 = 0.95
-                    WeightDecay = 0.1 // only applied on matmul weights
-                    GradNormClip = 1.0
+                Device = "auto"
+                NumWorkers = 0
+                MaxIters = 2000
+                BatchSize = 64
+                LearningRate = 5e-4
+                Beta1 = 0.9
+                Beta2 = 0.95
+                WeightDecay = 0.1 // only applied on matmul weights
+                GradNormClip = 1.0
             }
         use dataset = new SortDataset("train")
         Trainer.run config model dataset

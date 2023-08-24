@@ -10,6 +10,11 @@ module TorchExt =
 
     let (@@) a b = torch.matmul(a, b)
 
+    /// Sets random seed.
+    let setSeed seed =
+        torch.manual_seed(seed) |> ignore
+        torch.cuda.manual_seed_all(seed)
+
 module Tuple2 =
 
     let map f (a, b) =
