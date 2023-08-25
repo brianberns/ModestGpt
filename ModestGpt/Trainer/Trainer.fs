@@ -89,10 +89,11 @@ module Trainer =
                     let target = target.To(device)
                     model.GetLoss(input, target)
 
+                let timeEnd = DateTime.Now
                 callback {
                     Device = device
                     IterationNum = iterNum
-                    Duration = DateTime.Now - timeStart
+                    Duration = timeEnd - timeStart
                     Loss = loss.item<float32>()
                 }
 
@@ -102,6 +103,6 @@ module Trainer =
                 torch.nn.utils.clip_grad_norm_(model.parameters(), config.GradNormClip) |> ignore
                 optimizer.step() |> ignore
 
-                (DateTime.Now, iterNum + 1))
+                (timeEnd, iterNum + 1))
 
             |> ignore
