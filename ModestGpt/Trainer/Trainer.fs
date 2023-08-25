@@ -55,7 +55,7 @@ module Trainer =
             config.Beta1,
             config.Beta2)
 
-    let run (config : TrainerConfig) (model : Gpt) dataset callback =
+    let run (config : TrainerConfig) (model : Gpt) dataset =
 
         // determine the device we'll train on
         let device = config.Device
@@ -75,8 +75,8 @@ module Trainer =
 
         model.train()
 
-        ((DateTime.Now, 0), tensorPairs)
-            ||> Seq.fold (fun (timeStart, iterNum) (input, target) ->
+        ((DateTime.Now, 0, None), tensorPairs)
+            ||> Seq.scan (fun (timeStart, iterNum, _) (input, target) ->   // would prefer Seq.mapFold, but it is eager (for some reason)
                 use _scope = torch.NewDisposeScope()
 
                     // determine loss
@@ -85,13 +85,6 @@ module Trainer =
                     let target = target.To(device)
                     model.GetLoss(input, target)
 
-                let timeEnd = DateTime.Now
-                callback {
-                    Device = device
-                    IterationNum = iterNum
-                    Duration = timeEnd - timeStart
-                    Loss = loss.item<float32>()
-                }
                     // backprop and update the parameters
                 optimizer.zero_grad((*set_to_none=true*))
                 loss.backward()
@@ -100,6 +93,15 @@ module Trainer =
                     config.GradNormClip) |> ignore
                 optimizer.step() |> ignore
 
-                timeEnd, iterNum + 1)
+                let timeEnd = DateTime.Now
+                let progress =
+                    {
+                        Device = device
+                        IterationNum = iterNum
+                        Duration = timeEnd - timeStart
+                        Loss = loss.item<float32>()
+                    }
+                timeEnd, iterNum + 1, Some progress )
 
-            |> ignore
+            |> Seq.choose (fun (_, _, progressOpt) ->
+                progressOpt)

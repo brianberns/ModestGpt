@@ -71,8 +71,20 @@ module Program =
             Dropout = 0.1
         }
 
-    // iteration callback
-    let callback progress =
+    let config =
+        {
+            Device = "cuda"
+            NumWorkers = 4
+            MaxIters = -1
+            BatchSize = 64
+            LearningRate = 5e-4
+            Beta1 = 0.9
+            Beta2 = 0.95
+            WeightDecay = 0.1 // only applied on matmul weights
+            GradNormClip = 1.0
+        }
+
+    for progress in Trainer.run config model dataset do
 
         if progress.IterationNum % 10 = 0 then
             printfn $"Iteration: {progress.IterationNum}, Duration: {progress.Duration.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
@@ -93,18 +105,3 @@ module Program =
             model.save("model.pt") |> ignore
             // revert model to training mode
             model.train()
-
-    let config =
-        {
-            Device = "cuda"
-            NumWorkers = 4
-            MaxIters = -1
-            BatchSize = 64
-            LearningRate = 5e-4
-            Beta1 = 0.9
-            Beta2 = 0.95
-            WeightDecay = 0.1 // only applied on matmul weights
-            GradNormClip = 1.0
-        }
-
-    Trainer.run config model dataset callback

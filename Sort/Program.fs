@@ -95,12 +95,6 @@ module Program =
 
     let dataset = new SortDataset("train")
 
-    // iteration callback
-    let callback progress =
-
-        if progress.IterationNum % 10 = 0 then
-            printfn $"Iteration: {progress.IterationNum}, Duration: {progress.Duration.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
-
     let config =
         {
             Device = "cuda"
@@ -114,4 +108,6 @@ module Program =
             GradNormClip = 1.0
         }
 
-    Trainer.run config model dataset callback
+    for progress in Trainer.run config model dataset do
+        if progress.IterationNum % 10 = 0 then
+            printfn $"Iteration: {progress.IterationNum}, Duration: {progress.Duration.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
