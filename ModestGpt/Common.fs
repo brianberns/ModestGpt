@@ -20,6 +20,7 @@ module TorchExt =
 
     type torch.Tensor with
         member tensor.To(device : string) = tensor.``to``(device)
+        member tensor.To(device : torch.Device) = tensor.``to``(device)
 
     [<Extension>]
     type IModuleExt =

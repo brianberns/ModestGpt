@@ -27,7 +27,7 @@ type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?numWorker, ?dropLast) =
                 |> Seq.toArray
         let tensor = torch.cat(tensors, 0)
         if tensor.device_type <> device.``type`` || tensor.device_index <> device.index then
-            tensor.``to``(device)
+            tensor.To(device)
         else tensor
 
     static member private Collate =
