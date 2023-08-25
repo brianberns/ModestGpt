@@ -1,7 +1,10 @@
 ﻿namespace ModestGpt
 
+open System
+
 open TorchSharp
 open type torch
+open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
@@ -32,40 +35,38 @@ type Gpt(config) as self =
 
         logits, loss
 
-    (*
     /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
-    /// the sequence max_new_tokens times, feeding the predictions back into the model each time.
+    /// the sequence maxNewTokens times, feeding the predictions back into the model each time.
     /// Most likely you'll want to make sure to be in model.eval() mode of operation for this.
-    member _.generate(idx : Tensor, max_new_tokens, ?temperature, ?do_sample, ?top_k) =
+    member _.Generate(idx : Tensor, maxNewTokens, ?temperature, ?sample, ?topK) =
         let temperature = defaultArg temperature 1.0
-        let do_sample = defaultArg do_sample false
+        let sample = defaultArg sample false
         using (torch.no_grad()) (fun _ ->
-            (idx.alias(), range(max_new_tokens))
+            (idx.alias(), [1.. maxNewTokens])
                 ||> Seq.fold (fun idx _ ->
                     use _scope = torch.NewDisposeScope()
                     use idx = idx
-                    // if the sequence context is growing too long we must crop it at block_size
-                    let idx_cond =
-                        if idx.size(1) <= config.block_size then idx
-                        else idx[Colon, Slice(-config.block_size)]
+                    // if the sequence context is growing too long we must crop it at BlockSize
+                    let idxCond =
+                        if idx.size(1) <= config.BlockSize then idx
+                        else idx[Colon, Slice(-config.BlockSize)]
                     // forward the model to get the logits for the index in the sequence
-                    let logits = self.forward(idx_cond)
+                    let logits = self.forward(idxCond)
                     // pluck the logits at the final step and scale by desired temperature
-                    let logits = logits[Colon, Single(-1), Colon] / (temperature.ToScalar())
+                    let logits = logits[Colon, Single(-1), Colon] / (scalar temperature)
                     // optionally crop the logits to only the top k options
-                    Option.iter (fun top_k ->
-                        let struct (v, _) = torch.topk(logits, top_k)
+                    Option.iter (fun topK ->
+                        let struct (v, _) = torch.topk(logits, topK)
                         logits[torch.lt(logits, v[Colon, Single(-1)])] <- Double.NegativeInfinity)
-                        top_k
+                        topK
                     // apply softmax to convert logits to (normalized) probabilities
                     let probs = softmax(logits, dim = -1)
                     // either sample from the distribution or take the most likely element
-                    let idx_next =
-                        if do_sample then
+                    let idxNext =
+                        if sample then
                             torch.multinomial(probs, num_samples=1)
                         else
-                            let struct (_, idx_next) = torch.topk(probs, k=1, dim = -1)
-                            idx_next
+                            let struct (_, idxNext) = torch.topk(probs, k=1, dim = -1)
+                            idxNext
                     // append sampled index to the running sequence and continue
-                    torch.cat([|idx; idx_next|], dim=1).DetachFromDisposeScope()))
-    *)
+                    torch.cat([|idx; idxNext|], dim=1).DetachFromDisposeScope()))
