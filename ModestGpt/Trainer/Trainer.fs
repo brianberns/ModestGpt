@@ -1,4 +1,4 @@
-﻿namespace ModestGpt.Trainer
+﻿namespace ModestGpt
 
 open System
 open System.Collections.Generic
@@ -6,10 +6,7 @@ open System.Collections.Generic
 open TorchSharp
 open TorchSharp.Modules
 open type torch
-open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
-
-open ModestGpt.Model
 
 type TrainerConfig =
     {

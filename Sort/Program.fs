@@ -4,8 +4,6 @@ open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
-open ModestGpt.Model
-open ModestGpt.Trainer
 
 /// Dataset for the Sort problem. E.g. for problem length 6:
 /// Input: 0 0 2 1 0 1 -> Output: 0 0 0 1 1 2

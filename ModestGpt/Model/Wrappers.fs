@@ -1,4 +1,4 @@
-﻿namespace ModestGpt.Model
+﻿namespace ModestGpt
 
 open TorchSharp
 open type torch
