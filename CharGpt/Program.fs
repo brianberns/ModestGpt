@@ -21,21 +21,7 @@ type CharDataset(config, data : string) =
     let stoi = Map [ for i, ch in Seq.indexed chars -> ch, i ]
     let itos = Map [ for i, ch in Seq.indexed chars -> i, ch ]
 
-    do
-        printfn "data has %d characters, %d unique." data_size vocab_size_
-        let groups =
-            data
-                |> Seq.groupBy id
-                |> Seq.map (fun (c, group) ->
-                    c, Seq.length group)
-                |> Seq.sortByDescending snd
-        for c, len in groups do
-            let name =
-                if Char.IsLetterOrDigit(c) || Char.IsPunctuation(c) then
-                    string c
-                else
-                    $"#{int c}"
-            printfn $"{name}: {len}"
+    do printfn "data has %d characters, %d unique." data_size vocab_size_
 
     static member get_default_config() =
         {
