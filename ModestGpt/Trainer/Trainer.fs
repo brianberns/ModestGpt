@@ -96,13 +96,14 @@ module Trainer =
                     Duration = timeEnd - timeStart
                     Loss = loss.item<float32>()
                 }
-
-                // backprop and update the parameters
+                    // backprop and update the parameters
                 optimizer.zero_grad((*set_to_none=true*))
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), config.GradNormClip) |> ignore
+                torch.nn.utils.clip_grad_norm_(   // to-do: why?
+                    model.parameters(),
+                    config.GradNormClip) |> ignore
                 optimizer.step() |> ignore
 
-                (timeEnd, iterNum + 1))
+                timeEnd, iterNum + 1)
 
             |> ignore
