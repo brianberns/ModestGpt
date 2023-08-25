@@ -83,7 +83,7 @@ module Program =
 
     [<EntryPoint>]
     let main args =
-        setSeed 0
+        ModestGpt.setSeed 0
         use model =
             new Gpt {
                 NumLayer = 3
