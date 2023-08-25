@@ -8,7 +8,7 @@ open ModestGpt
 
 /// GPT Language Model
 type Gpt(config) as self =
-    inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("GPT")
+    inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("Gpt")
 
     let transformer = new Transformer(config)
     let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
