@@ -5,7 +5,7 @@ VisualStudioVersion = 17.7.34018.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ModestGpt", "ModestGpt\ModestGpt.fsproj", "{32F39338-667F-43AF-8F94-CF0B3F40A132}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9CC46985-F7F7-4E51-9168-D2ED8363FE10}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sort", "Sort\Sort.fsproj", "{BFCEC5AD-8E2C-4940-BAC6-6150205FAF0A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,6 +16,9 @@ Global
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Debug|x64.ActiveCfg = Debug|x64
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Debug|x64.Build.0 = Debug|x64
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Release|x64.ActiveCfg = Release|x64
+		{BFCEC5AD-8E2C-4940-BAC6-6150205FAF0A}.Debug|x64.ActiveCfg = Debug|x64
+		{BFCEC5AD-8E2C-4940-BAC6-6150205FAF0A}.Debug|x64.Build.0 = Debug|x64
+		{BFCEC5AD-8E2C-4940-BAC6-6150205FAF0A}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
