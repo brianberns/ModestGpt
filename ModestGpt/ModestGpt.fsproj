@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Include="Common.fs" />
     <Compile Include="Model\Wrappers.fs" />
-    <Compile Include="Model\ModelConfig.fs" />
+    <Compile Include="Model\Config.fs" />
     <Compile Include="Model\Projection.fs" />
     <Compile Include="Model\CausalSelfAttention.fs" />
     <Compile Include="Model\Transformer.fs" />
