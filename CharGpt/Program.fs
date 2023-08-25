@@ -96,7 +96,7 @@ module Program =
 
     let config =
         {
-            Device = "auto"
+            Device = "cuda"
             NumWorkers = 4
             MaxIters = -1
             BatchSize = 64

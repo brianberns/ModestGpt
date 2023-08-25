@@ -58,13 +58,7 @@ module Trainer =
     let run (config : TrainerConfig) (model : Gpt) dataset callback =
 
         // determine the device we'll train on
-        let device =
-            match config.Device.ToLower(), torch.cuda.is_available() with
-                | "cuda", true
-                | "auto", true -> "cuda"
-                | "cpu", _
-                | "auto", false -> "cpu"
-                | _ -> $"{config.Device} not supported"
+        let device = config.Device
         let model = model.To(device)
         do printfn $"running on device {device}"
 
