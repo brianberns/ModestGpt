@@ -59,10 +59,12 @@ module Trainer =
 
         // determine the device we'll train on
         let device =
-            if config.Device = "auto" then
-                if torch.cuda.is_available() then "cuda"
-                else "cpu"
-            else config.Device
+            match config.Device, torch.cuda.is_available() with
+                | "cuda", true
+                | "auto", true -> "cuda"
+                | "cpu", _
+                | "auto", false -> "cpu"
+                | device, _ -> $"{device} not supported"
         let model = model.To(device)
         do printfn $"running on device {device}"
 
