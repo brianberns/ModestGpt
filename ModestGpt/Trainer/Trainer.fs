@@ -21,6 +21,14 @@ type TrainerConfig =
         GradNormClip : float
     }
 
+type Progress =
+    {
+        Device : Device
+        IterNum : int
+        IterDt : TimeSpan
+        Loss : float32
+    }
+
 module Trainer =
 
     let createOptimizer (model : nn.Module) config =
@@ -48,7 +56,7 @@ module Trainer =
             config.Beta1,
             config.Beta2)
 
-    let run config (model : Gpt) dataset =
+    let run (config : TrainerConfig) (model : Gpt) dataset callback =
 
         // determine the device we'll train on
         let device =
@@ -72,7 +80,7 @@ module Trainer =
 
             if enumerator.MoveNext() then
 
-                let iter_time =
+                let iterTime =
                     use _scope = torch.NewDisposeScope()
 
                     // fetch the next batch (x, y)
@@ -90,14 +98,18 @@ module Trainer =
                     optimizer.step() |> ignore
 
                     let tnow = DateTime.Now
-                    let iter_dt = tnow - iterTime
-                    if iterNum % 10 = 0 then
-                        printfn $"iter {iterNum}: loss {loss.item<float32>()}"
+                    let iterDt = tnow - iterTime
+                    callback {
+                        Device = device
+                        IterNum = iterNum
+                        IterDt = iterDt
+                        Loss = loss.item<float32>()
+                    }
                     tnow
 
                 // termination conditions
                 if config.MaxIters <= 0 || iterNum < config.MaxIters then
-                    loop (iterNum + 1) iter_time enumerator
+                    loop (iterNum + 1) iterTime enumerator
 
             else
                 train_loader.GetEnumerator() |> loop (iterNum + 1) iterTime

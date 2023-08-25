@@ -81,31 +81,37 @@ type SortDataset(split, ?length, ?num_digits) =
 
 module Program =
 
-    [<EntryPoint>]
-    let main args =
-        ModestGpt.setSeed 0
-        use model =
-            new Gpt {
-                NumLayer = 3
-                NumHead = 3
-                NumEmbed = 48
-                VocabSize = 3
-                BlockSize = 6 * 2 - 1
-                Dropout = 0.1
-            }
-        let config =
-            {
-                Device = "auto"
-                NumWorkers = 0
-                MaxIters = 2000
-                BatchSize = 64
-                LearningRate = 5e-4
-                Beta1 = 0.9
-                Beta2 = 0.95
-                WeightDecay = 0.1 // only applied on matmul weights
-                GradNormClip = 1.0
-            }
-        use dataset = new SortDataset("train")
-        Trainer.run config model dataset
-                
-        0
+    ModestGpt.setSeed 0
+
+    let model =
+        new Gpt {
+            NumLayer = 3
+            NumHead = 3
+            NumEmbed = 48
+            VocabSize = 3
+            BlockSize = 6 * 2 - 1
+            Dropout = 0.1
+        }
+
+    let dataset = new SortDataset("train")
+
+    // iteration callback
+    let callback progress =
+
+        if progress.IterNum % 10 = 0 then
+            printfn $"Iteration {progress.IterNum} ({progress.IterDt.TotalMilliseconds}ms): loss {progress.Loss}s"
+
+    let config =
+        {
+            Device = "auto"
+            NumWorkers = 0
+            MaxIters = 2000
+            BatchSize = 64
+            LearningRate = 5e-4
+            Beta1 = 0.9
+            Beta2 = 0.95
+            WeightDecay = 0.1 // only applied on matmul weights
+            GradNormClip = 1.0
+        }
+
+    Trainer.run config model dataset callback

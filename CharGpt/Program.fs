@@ -2,6 +2,7 @@
 
 open TorchSharp
 open type torch
+open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
@@ -53,40 +54,58 @@ type CharDataset(config, data : string) =
 
 module Program =
 
-    [<EntryPoint>]
-    let main args =
+    Console.OutputEncoding <- Text.Encoding.UTF8
+    ModestGpt.setSeed 0
 
-        Console.OutputEncoding <- Text.Encoding.UTF8
-        ModestGpt.setSeed 0
+    // construct the training dataset
+    let dataset =
+        let text = System.IO.File.ReadAllText(@"Input.txt")
+        new CharDataset({ block_size = 128 }, text)
 
-        // construct the training dataset
-        let dataset =
-            let text = System.IO.File.ReadAllText(@"Input.txt")
-            new CharDataset({ block_size = 128 }, text)
+    let model =
+        new Gpt {
+            NumLayer = 6
+            NumHead = 6
+            NumEmbed = 192
+            VocabSize = dataset.get_vocab_size()
+            BlockSize = dataset.get_block_size()
+            Dropout = 0.1
+        }
 
-        use model =
-            new Gpt {
-                NumLayer = 6
-                NumHead = 6
-                NumEmbed = 192
-                VocabSize = dataset.get_vocab_size()
-                BlockSize = dataset.get_block_size()
-                Dropout = 0.1
-            }
+    // iteration callback
+    let callback progress =
 
-        let config =
-            {
-                Device = "auto"
-                NumWorkers = 4
-                MaxIters = -1
-                BatchSize = 64
-                LearningRate = 5e-4
-                Beta1 = 0.9
-                Beta2 = 0.95
-                WeightDecay = 0.1 // only applied on matmul weights
-                GradNormClip = 1.0
-            }
+        if progress.IterNum % 10 = 0 then
+            printfn $"Iteration {progress.IterNum} ({progress.IterDt.TotalMilliseconds}ms): loss {progress.Loss}s"
 
-        Trainer.run config model dataset
-                
-        0
+        if progress.IterNum % 500 = 0 then
+            model.eval()
+            using (torch.no_grad()) (fun _ ->
+                // sample from the model...
+                let context = "It is"
+                let x =
+                    torch.tensor(
+                        [| for ch in context -> dataset.Stoi(ch) |],
+                        dtype = torch.long)
+                let x = x[None, Ellipsis].``to``(progress.Device)
+                let y = model.Generate(x, 500, temperature = 1.0, sample = true, topK = 10)[0]
+                let completion = String ([| for i in y.data<int64>() -> dataset.Itos(int i) |])
+                printfn "%s" completion)
+            model.save("model.pt") |> ignore
+            // revert model to training mode
+            model.train()
+
+    let config =
+        {
+            Device = "auto"
+            NumWorkers = 4
+            MaxIters = -1
+            BatchSize = 64
+            LearningRate = 5e-4
+            Beta1 = 0.9
+            Beta2 = 0.95
+            WeightDecay = 0.1 // only applied on matmul weights
+            GradNormClip = 1.0
+        }
+
+    Trainer.run config model dataset callback
