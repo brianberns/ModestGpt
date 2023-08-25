@@ -26,7 +26,7 @@ type CharDataset(config, data : string) =
 
     static member get_default_config() =
         {
-            block_size = 128
+            block_size = 256
         }
 
     member _.Itos(i) = itos[i]
@@ -64,9 +64,9 @@ module Program =
 
     let model =
         new Gpt {
-            NumLayer = 6
-            NumHead = 6
-            NumEmbed = 192
+            NumLayer = 8
+            NumHead = 16
+            NumEmbed = 512
             VocabSize = dataset.get_vocab_size()
             BlockSize = dataset.get_block_size()
             Dropout = 0.1
@@ -75,7 +75,7 @@ module Program =
     // iteration callback
     let callback progress =
 
-        if progress.IterNum % 100 = 0 then
+        if progress.IterNum % 10 = 0 then
             printfn $"Iteration: {progress.IterNum}, Duration: {progress.IterDt.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
 
         if progress.IterNum % 500 = 0 then
@@ -88,7 +88,7 @@ module Program =
                         [| for ch in context -> dataset.Stoi(ch) |],
                         dtype = torch.long)
                 let x = x[None, Ellipsis].``to``(progress.Device)
-                let y = model.Generate(x, 500, temperature = 1.0, sample = true, topK = 10)[0]
+                let y = model.Generate(x, dataset.get_block_size(), temperature = 1.0, sample = true, topK = 10)[0]
                 let completion = String ([| for i in y.data<int64>() -> dataset.Itos(int i) |])
                 printfn "%s" completion)
             model.save("model.pt") |> ignore
