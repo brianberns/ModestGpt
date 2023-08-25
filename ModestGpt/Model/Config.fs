@@ -1,6 +1,6 @@
-﻿namespace ModestGpt.Model
+﻿namespace ModestGpt
 
-type Config =
+type ModelConfig =
     {
         NumEmbed : int
         NumHead : int

@@ -1,4 +1,4 @@
-namespace ModestGpt.Trainer
+namespace ModestGpt
 
 open System
 
