@@ -23,15 +23,15 @@ type TrainerConfig =
 
 module Trainer =
 
-    let createOptimizer (model : Gpt) config =
+    let createOptimizer (model : nn.Module) config =
 
         // separate out all parameters to those that will and won't experience regularizing weight decay
         let parmGroups =
             [|
                 for mdule in model.modules() do
                     match mdule :> obj with
-                        | :? IWeightDecay as module' ->
-                            for parm, setting in module'.ParameterSettings do
+                        | :? IWeightDecay as mdule ->
+                            for parm, setting in mdule.ParameterSettings do
                                 let wd =
                                     if setting then config.WeightDecay
                                     else 0.0
@@ -48,7 +48,7 @@ module Trainer =
             config.Beta1,
             config.Beta2)
 
-    let run config model dataset =
+    let run config (model : Gpt) dataset =
 
         // determine the device we'll train on
         let device =
