@@ -99,7 +99,7 @@ module Program =
     let callback progress =
 
         if progress.IterNum % 10 = 0 then
-            printfn $"Iteration {progress.IterNum} ({progress.IterDt.TotalMilliseconds}ms): loss {progress.Loss}s"
+            printfn $"Iteration: {progress.IterNum}, Duration: {progress.IterDt.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
 
     let config =
         {

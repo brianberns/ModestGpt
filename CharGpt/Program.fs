@@ -75,14 +75,14 @@ module Program =
     // iteration callback
     let callback progress =
 
-        if progress.IterNum % 10 = 0 then
-            printfn $"Iteration {progress.IterNum} ({progress.IterDt.TotalMilliseconds}ms): loss {progress.Loss}s"
+        if progress.IterNum % 100 = 0 then
+            printfn $"Iteration: {progress.IterNum}, Duration: {progress.IterDt.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
 
         if progress.IterNum % 500 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...
-                let context = "It is"
+                let context = "It is "
                 let x =
                     torch.tensor(
                         [| for ch in context -> dataset.Stoi(ch) |],
