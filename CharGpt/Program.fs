@@ -1,4 +1,6 @@
-﻿open TorchSharp
+﻿open System
+
+open TorchSharp
 open type torch
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
@@ -15,10 +17,25 @@ type CharDataset(config, data : string) =
 
     let chars = set data
     let data_size, vocab_size_ = data.Length, chars.Count
-    do printfn "data has %d characters, %d unique." data_size vocab_size_
 
     let stoi = Map [ for i, ch in Seq.indexed chars -> ch, i ]
     let itos = Map [ for i, ch in Seq.indexed chars -> i, ch ]
+
+    do
+        printfn "data has %d characters, %d unique." data_size vocab_size_
+        let groups =
+            data
+                |> Seq.groupBy id
+                |> Seq.map (fun (c, group) ->
+                    c, Seq.length group)
+                |> Seq.sortByDescending snd
+        for c, len in groups do
+            let name =
+                if Char.IsLetterOrDigit(c) || Char.IsPunctuation(c) then
+                    string c
+                else
+                    $"#{int c}"
+            printfn $"{name}: {len}"
 
     static member get_default_config() =
         {
@@ -53,6 +70,7 @@ module Program =
     [<EntryPoint>]
     let main args =
 
+        Console.OutputEncoding <- Text.Encoding.UTF8
         ModestGpt.setSeed 0
 
         // construct the training dataset
