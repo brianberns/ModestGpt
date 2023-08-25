@@ -14,6 +14,11 @@ type Gpt(config) as self =
     inherit BaseModule("Gpt")
 
     let transformer = new Transformer(config)
+
+        // Language model head. In the real GPT-2, this module's parameter are
+        // the mirror image of (and thus shared with) the transformer's token
+        // embeddings (wte). I'm not sure why minGPT doesn't do the same.
+        // See https://huggingface.co/transformers/v2.0.0/_modules/transformers/modeling_gpt2.html.
     let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
     do self.RegisterComponents()
