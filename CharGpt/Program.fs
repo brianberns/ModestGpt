@@ -1,8 +1,7 @@
 ﻿open System
 
 open TorchSharp
-open type torch
-open type TensorIndex
+open type torch.TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
@@ -48,8 +47,8 @@ type CharDataset(config, data : string) =
         // encode every character to an integer
         let dix = [| for ch in chunk -> stoi[ch] |]
         // return as tensors
-        let x = torch.tensor(dix[.. dix.Length-2], dtype=torch.long)
-        let y = torch.tensor(dix[1 ..], dtype=torch.long)
+        let x = torch.tensor(dix[.. dix.Length-2], dtype = torch.long)
+        let y = torch.tensor(dix[1 ..], dtype = torch.long)
         x, y
 
 module Program =
@@ -75,10 +74,10 @@ module Program =
     // iteration callback
     let callback progress =
 
-        if progress.IterNum % 10 = 0 then
-            printfn $"Iteration: {progress.IterNum}, Duration: {progress.IterDt.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
+        if progress.IterationNum % 10 = 0 then
+            printfn $"Iteration: {progress.IterationNum}, Duration: {progress.Duration.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
 
-        if progress.IterNum % 500 = 0 then
+        if progress.IterationNum % 500 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...

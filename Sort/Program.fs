@@ -98,8 +98,8 @@ module Program =
     // iteration callback
     let callback progress =
 
-        if progress.IterNum % 10 = 0 then
-            printfn $"Iteration: {progress.IterNum}, Duration: {progress.IterDt.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
+        if progress.IterationNum % 10 = 0 then
+            printfn $"Iteration: {progress.IterationNum}, Duration: {progress.Duration.TotalMilliseconds:f1}ms, Loss: {progress.Loss}"
 
     let config =
         {

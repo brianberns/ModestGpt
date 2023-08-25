@@ -1,12 +1,11 @@
 ﻿namespace ModestGpt
 
 open System
-open System.Collections.Generic
 
 open TorchSharp
 open TorchSharp.Modules
-open type torch
-open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+#nowarn "40"   // allow recursive value
 
 type TrainerConfig =
     {
@@ -24,14 +23,14 @@ type TrainerConfig =
 type Progress =
     {
         Device : string
-        IterNum : int
-        IterDt : TimeSpan
+        IterationNum : int
+        Duration : TimeSpan
         Loss : float32
     }
 
 module Trainer =
 
-    let createOptimizer (model : nn.Module) config =
+    let createOptimizer (model : torch.nn.Module) config =
 
         // separate out all parameters to those that will and won't experience regularizing weight decay
         let parmGroups =
@@ -71,47 +70,38 @@ module Trainer =
         let optimizer = createOptimizer model config
 
         // setup the dataloader
-        let train_loader =
-            new DataLoader(dataset, config.BatchSize, shuffle=true, numWorker=config.NumWorkers)
+        let tensorPairs =
+            let loader =
+                new DataLoader(dataset, config.BatchSize, shuffle=true, numWorker=config.NumWorkers)
+            let rec pairs = seq { yield! loader; yield! pairs }
+            if config.MaxIters < 0 then pairs
+            else Seq.truncate (config.MaxIters + 1) pairs   // [0 .. MaxIters] inclusive
 
         model.train()
 
-        let rec loop iterNum iterTime (enumerator : IEnumerator<_>) =
+        ((DateTime.Now, 0), tensorPairs)
+            ||> Seq.fold (fun (timeStart, iterNum) (x, y) ->
 
-            if enumerator.MoveNext() then
+                use _scope = torch.NewDisposeScope()
+                let x = x.``to``(device)
+                let y = y.``to``(device)
 
-                let iterTime =
-                    use _scope = torch.NewDisposeScope()
+                // forward the model
+                let _logits, loss = model.forward(x, y)
 
-                    // fetch the next batch (x, y)
-                    let (x : Tensor), (y : Tensor) = enumerator.Current
-                    let x = x.``to``(device)
-                    let y = y.``to``(device)
+                callback {
+                    Device = device
+                    IterationNum = iterNum
+                    Duration = DateTime.Now - timeStart
+                    Loss = loss.item<float32>()
+                }
 
-                    // forward the model
-                    let _logits, loss = model.forward(x, y)
+                // backprop and update the parameters
+                optimizer.zero_grad((*set_to_none=true*))
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.GradNormClip) |> ignore
+                optimizer.step() |> ignore
 
-                    // backprop and update the parameters
-                    optimizer.zero_grad((*set_to_none=true*))
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), config.GradNormClip) |> ignore
-                    optimizer.step() |> ignore
+                (DateTime.Now, iterNum + 1))
 
-                    let tnow = DateTime.Now
-                    let iterDt = tnow - iterTime
-                    callback {
-                        Device = device
-                        IterNum = iterNum
-                        IterDt = iterDt
-                        Loss = loss.item<float32>()
-                    }
-                    tnow
-
-                // termination conditions
-                if config.MaxIters <= 0 || iterNum < config.MaxIters then
-                    loop (iterNum + 1) iterTime enumerator
-
-            else
-                train_loader.GetEnumerator() |> loop (iterNum + 1) iterTime
-
-        train_loader.GetEnumerator() |> loop 0 DateTime.Now
+            |> ignore
