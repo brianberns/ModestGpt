@@ -63,7 +63,7 @@ module Trainer =
                 if torch.cuda.is_available() then "cuda"
                 else "cpu"
             else config.Device
-        let model = model.``to``(device)
+        let model = model.To(device)
         do printfn $"running on device {device}"
 
         // setup the optimizer
@@ -80,14 +80,14 @@ module Trainer =
         model.train()
 
         ((DateTime.Now, 0), tensorPairs)
-            ||> Seq.fold (fun (timeStart, iterNum) (x, y) ->
-
+            ||> Seq.fold (fun (timeStart, iterNum) (input, target) ->
                 use _scope = torch.NewDisposeScope()
-                let x = x.``to``(device)
-                let y = y.``to``(device)
 
-                // forward the model
-                let _logits, loss = model.forward(x, y)
+                    // determine loss
+                let loss =
+                    let input = input.To(device)
+                    let target = target.To(device)
+                    model.GetLoss(input, target)
 
                 callback {
                     Device = device

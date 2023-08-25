@@ -11,29 +11,24 @@ open ModestGpt
 
 /// GPT Language Model
 type Gpt(config) as self =
-    inherit nn.Module<Tensor, Tensor, Tensor * Tensor>("Gpt")
+    inherit BaseModule("Gpt")
 
     let transformer = new Transformer(config)
     let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
     do self.RegisterComponents()
 
-    member _.forward(inp) =
+    /// Produces logits for the given input.
+    override _.forward(inp) =
         inp --> transformer --> lm_head
 
-    override _.forward(inp, targets) =
-
-        // forward the GPT model itself
+    /// Calculates loss for the given input compared to the given targets.
+    member _.GetLoss(inp, targets : Tensor) =
         let logits = self.forward(inp)
-
-        // calculate the loss
-        let loss =
-            nn.functional.cross_entropy(
-                logits.view(-1, logits.size(-1)),
-                targets.view(-1),
-                ignore_index = -1)
-
-        logits, loss
+        nn.functional.cross_entropy(
+            logits.view(-1, logits.size(-1)),
+            targets.view(-1),
+            ignore_index = -1)
 
     /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     /// the sequence maxNewTokens times, feeding the predictions back into the model each time.

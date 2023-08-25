@@ -1,7 +1,6 @@
 ﻿namespace ModestGpt
 
 open TorchSharp
-open type torch
 
 module ModestGpt =
 
@@ -13,9 +12,21 @@ module ModestGpt =
 [<AutoOpen>]
 module TorchExt =
 
+    open System.Runtime.CompilerServices
+
     let scalar (x : float) = x.ToScalar()
 
     let (@@) a b = torch.matmul(a, b)
+
+    type torch.Tensor with
+        member tensor.To(device : string) = tensor.``to``(device)
+
+    [<Extension>]
+    type IModuleExt =
+        [<Extension>]
+        static member To<'mdule when 'mdule :> torch.nn.Module>(
+            mdule : 'mdule, device : string) =
+            mdule.``to``(device)
 
 module Tuple2 =
 

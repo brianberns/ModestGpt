@@ -86,7 +86,7 @@ module Program =
                     torch.tensor(
                         [| for ch in context -> dataset.Stoi(ch) |],
                         dtype = torch.long)
-                let x = x[None, Ellipsis].``to``(progress.Device)
+                let x = x[None, Ellipsis].To(progress.Device)
                 let y = model.Generate(x, dataset.get_block_size(), temperature = 1.0, sample = true, topK = 10)[0]
                 let completion = String ([| for i in y.data<int64>() -> dataset.Itos(int i) |])
                 printfn "%s" completion)
