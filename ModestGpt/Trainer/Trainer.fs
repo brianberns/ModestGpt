@@ -23,7 +23,7 @@ type TrainerConfig =
 
 type Progress =
     {
-        Device : Device
+        Device : string
         IterNum : int
         IterDt : TimeSpan
         Loss : float32
