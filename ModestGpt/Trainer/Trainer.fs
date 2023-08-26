@@ -5,8 +5,6 @@ open System
 open TorchSharp
 open TorchSharp.Modules
 
-#nowarn "40"   // allow recursive value
-
 type TrainerConfig =
     {
         Device : string
@@ -22,6 +20,7 @@ type TrainerConfig =
 type Progress =
     {
         Device : string
+        EpochNum : int
         IterationNum : int
         Duration : TimeSpan
         Loss : float32
@@ -65,20 +64,29 @@ module Trainer =
         let optimizer = createOptimizer model config
 
         // setup the dataloader
-        let tensorPairs =
-            let loader =
-                new DataLoader(
-                    dataset,
-                    config.BatchSize,
-                    shuffle = true)
-            let rec pairs = seq { yield! loader; yield! pairs }
-            if config.MaxIters < 0 then pairs
-            else Seq.truncate (config.MaxIters + 1) pairs   // [0 .. MaxIters] inclusive
+        let tensorTuples =
+
+            let tuples =
+                let loader =
+                    new DataLoader(
+                        dataset,
+                        config.BatchSize,
+                        shuffle = true)
+                let rec loop epochNum =
+                    seq {
+                        for x, y in loader do
+                            yield epochNum, x, y
+                        yield! loop (epochNum + 1)
+                    }
+                loop 0
+
+            if config.MaxIters < 0 then tuples
+            else Seq.truncate (config.MaxIters + 1) tuples   // [0 .. MaxIters] inclusive
 
         model.train()
 
-        ((DateTime.Now, 0, None), tensorPairs)
-            ||> Seq.scan (fun (timeStart, iterNum, _) (input, target) ->   // would prefer Seq.mapFold, but it is eager (for some reason)
+        ((DateTime.Now, 0, None), tensorTuples)
+            ||> Seq.scan (fun (timeStart, iterNum, _) (epochNum, input, target) ->   // would prefer Seq.mapFold, but it is eager (for some reason)
                 use _scope = torch.NewDisposeScope()
 
                     // determine loss
@@ -99,6 +107,7 @@ module Trainer =
                 let progress =
                     {
                         Device = device
+                        EpochNum = epochNum
                         IterationNum = iterNum
                         Duration = timeEnd - timeStart
                         Loss = loss.item<float32>()
