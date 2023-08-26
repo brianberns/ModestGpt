@@ -110,7 +110,7 @@ module Program =
     for progress in Trainer.run config model dataset do
         if progress.IterationNum % 10 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
-                progress.EpochNum
                 progress.IterationNum
+                progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
