@@ -1,4 +1,5 @@
 ﻿open System
+open System.IO
 
 open TorchSharp
 open type torch.TensorIndex
@@ -8,15 +9,18 @@ open ModestGpt
 
 type CharDatasetConfig =
     {
+        InputFilePath : string
         BlockSize : int
+        Context : string
     }
 
 /// Emits batches of characters
-type CharDataset(config, data : string) =
+type CharDataset(config) =
     inherit Dataset()
 
-    let chars = set data
-    let data_size, vocab_size_ = data.Length, chars.Count
+    let text = File.ReadAllText(config.InputFilePath)
+    let chars = set text
+    let data_size, vocab_size_ = text.Length, chars.Count
 
     let stoi = Map [ for i, ch in Seq.indexed chars -> ch, i ]
     let itos = Map [ for i, ch in Seq.indexed chars -> i, ch ]
@@ -33,11 +37,11 @@ type CharDataset(config, data : string) =
         config.BlockSize
 
     override _.Count with get() =
-        int64 (data.Length - config.BlockSize)
+        int64 (text.Length - config.BlockSize)
 
     override _.GetTensor(idx) =
         // grab a chunk of (block_size + 1) characters from the data
-        let chunk = data[int idx .. int idx + config.BlockSize]
+        let chunk = text[int idx .. int idx + config.BlockSize]
         assert(chunk.Length = config.BlockSize + 1)
         // encode every character to an integer
         let dix = [| for ch in chunk -> stoi[ch] |]
@@ -52,12 +56,16 @@ module Program =
     ModestGpt.setSeed 0
 
     // construct the training dataset
-    let dataset =
-        let text = System.IO.File.ReadAllText(@"Input.txt")
-        new CharDataset({ BlockSize = 256 }, text)
+    let datasetConfig =
+        {
+            InputFilePath = "Input.xt"
+            BlockSize = 256
+            Context = "It is "
+        }
+    let dataset = new CharDataset(datasetConfig)
 
     let model =
-        let config =
+        let modelConfig =
             {
                 NumLayer = 6
                 NumHead = 6
@@ -66,10 +74,10 @@ module Program =
                 BlockSize = dataset.get_block_size()
                 Dropout = 0.1
             }
-        printfn $"Model config: {config}"
-        new Gpt(config)
+        printfn $"Model config: {modelConfig}"
+        new Gpt(modelConfig)
 
-    let config =
+    let trainerConfig =
         {
             Device = "cuda"
             MaxIters = -1
@@ -80,10 +88,10 @@ module Program =
             WeightDecay = 0.1 // only applied on matmul weights
             GradNormClip = 1.0
         }
-    printfn $"Trainer config: {config}"
-    printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
+    printfn $"Trainer config: {trainerConfig}"
+    printfn $"{ceil (float dataset.Count / float trainerConfig.BatchSize)} batches/epoch"
 
-    for progress in Trainer.run config model dataset do
+    for progress in Trainer.run trainerConfig model dataset do
 
         if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
@@ -96,10 +104,9 @@ module Program =
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...
-                let context = "It is "
                 let x =
                     torch.tensor(
-                        [| for ch in context -> dataset.Stoi(ch) |],
+                        [| for ch in datasetConfig.Context -> dataset.Stoi(ch) |],
                         dtype = torch.long)
                 let x = x[None, Ellipsis].To(progress.Device)
                 let y = model.Generate(x, dataset.get_block_size(), temperature = 1.0, sample = true, topK = 10)[0]
