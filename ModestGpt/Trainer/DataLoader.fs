@@ -40,5 +40,5 @@ type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?numWorker, ?dropLast) =
     member this.Indexed =
         Seq.indexed this
             |> Seq.map (fun (iBatch, (x, y)) ->
-                let epochFrac = float iBatch / float dataset.Count
+                let epochFrac = float (iBatch * batchSize) / float dataset.Count
                 epochFrac, x, y)
