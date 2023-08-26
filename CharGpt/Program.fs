@@ -62,14 +62,17 @@ module Program =
         new CharDataset({ block_size = 128 }, text)
 
     let model =
-        new Gpt {
-            NumLayer = 8
-            NumHead = 16
-            NumEmbed = 512
-            VocabSize = dataset.get_vocab_size()
-            BlockSize = dataset.get_block_size()
-            Dropout = 0.1
-        }
+        let config =
+            {
+                NumLayer = 8
+                NumHead = 16
+                NumEmbed = 512
+                VocabSize = dataset.get_vocab_size()
+                BlockSize = dataset.get_block_size()
+                Dropout = 0.1
+            }
+        printfn $"Model config: {config}"
+        new Gpt(config)
 
     let config =
         {
@@ -82,11 +85,13 @@ module Program =
             WeightDecay = 0.1 // only applied on matmul weights
             GradNormClip = 1.0
         }
+    printfn $"Trainer config: {config}"
+    printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
 
     for progress in Trainer.run config model dataset do
 
         if progress.IterationNum % 10 = 0 then
-            printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
+            printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds

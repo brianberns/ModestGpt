@@ -83,17 +83,20 @@ module Program =
 
     ModestGpt.setSeed 0
 
-    let model =
-        new Gpt {
-            NumLayer = 3
-            NumHead = 3
-            NumEmbed = 48
-            VocabSize = 3
-            BlockSize = 6 * 2 - 1
-            Dropout = 0.1
-        }
-
     let dataset = new SortDataset("train")
+
+    let model =
+        let config =
+            {
+                NumLayer = 3
+                NumHead = 3
+                NumEmbed = 48
+                VocabSize = 3
+                BlockSize = 6 * 2 - 1
+                Dropout = 0.1
+            }
+        printfn $"Model config: {config}"
+        new Gpt(config)
 
     let config =
         {
@@ -106,9 +109,11 @@ module Program =
             WeightDecay = 0.1 // only applied on matmul weights
             GradNormClip = 1.0
         }
+    printfn $"Trainer config: {config}"
+    printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
 
     for progress in Trainer.run config model dataset do
-        if progress.IterationNum % 10 = 0 then
+        if progress.IterationNum % 1 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
