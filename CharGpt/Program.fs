@@ -8,7 +8,7 @@ open ModestGpt
 
 type CharDatasetConfig =
     {
-        block_size : int
+        BlockSize : int
     }
 
 /// Emits batches of characters
@@ -23,11 +23,6 @@ type CharDataset(config, data : string) =
 
     do printfn "data has %d characters, %d unique." data_size vocab_size_
 
-    static member get_default_config() =
-        {
-            block_size = 256
-        }
-
     member _.Itos(i) = itos[i]
     member _.Stoi(ch) = stoi[ch]
 
@@ -35,15 +30,15 @@ type CharDataset(config, data : string) =
         vocab_size_
 
     member _.get_block_size() =
-        config.block_size
+        config.BlockSize
 
     override _.Count with get() =
-        int64 (data.Length - config.block_size)
+        int64 (data.Length - config.BlockSize)
 
     override _.GetTensor(idx) =
         // grab a chunk of (block_size + 1) characters from the data
-        let chunk = data[int idx .. int idx + config.block_size]
-        assert(chunk.Length = config.block_size + 1)
+        let chunk = data[int idx .. int idx + config.BlockSize]
+        assert(chunk.Length = config.BlockSize + 1)
         // encode every character to an integer
         let dix = [| for ch in chunk -> stoi[ch] |]
         // return as tensors
@@ -59,14 +54,14 @@ module Program =
     // construct the training dataset
     let dataset =
         let text = System.IO.File.ReadAllText(@"Input.txt")
-        new CharDataset({ block_size = 128 }, text)
+        new CharDataset({ BlockSize = 256 }, text)
 
     let model =
         let config =
             {
-                NumLayer = 8
-                NumHead = 16
-                NumEmbed = 512
+                NumLayer = 6
+                NumHead = 6
+                NumEmbed = 192
                 VocabSize = dataset.get_vocab_size()
                 BlockSize = dataset.get_block_size()
                 Dropout = 0.1
@@ -78,7 +73,7 @@ module Program =
         {
             Device = "cuda"
             MaxIters = -1
-            BatchSize = 64
+            BatchSize = 74
             LearningRate = 5e-4
             Beta1 = 0.9
             Beta2 = 0.95
@@ -90,14 +85,14 @@ module Program =
 
     for progress in Trainer.run config model dataset do
 
-        if progress.IterationNum % 10 = 0 then
+        if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 500 = 0 then
+        if progress.IterationNum % 1000 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...
