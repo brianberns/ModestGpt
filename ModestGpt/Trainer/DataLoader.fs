@@ -5,6 +5,7 @@ open System
 open TorchSharp
 open type torch
 open type utils.data
+open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 type Dataset = Dataset<Tensor * Tensor>
 
@@ -35,3 +36,9 @@ type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?numWorker, ?dropLast) =
             let pairs = Seq.cache pairs
             collate fst pairs device,
             collate snd pairs device)
+
+    member this.Indexed =
+        Seq.indexed this
+            |> Seq.map (fun (iBatch, (x, y)) ->
+                let epochFrac = float iBatch / float dataset.Count
+                epochFrac, x, y)

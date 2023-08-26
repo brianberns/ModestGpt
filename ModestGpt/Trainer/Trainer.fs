@@ -20,7 +20,7 @@ type TrainerConfig =
 type Progress =
     {
         Device : string
-        EpochNum : int
+        EpochNum : float
         IterationNum : int
         Duration : TimeSpan
         Loss : float32
@@ -74,8 +74,8 @@ module Trainer =
                         shuffle = true)
                 let rec loop epochNum =
                     seq {
-                        for x, y in loader do
-                            yield epochNum, x, y
+                        for epochFrac, x, y in loader.Indexed do
+                            yield float epochNum + epochFrac, x, y
                         yield! loop (epochNum + 1)
                     }
                 loop 0
