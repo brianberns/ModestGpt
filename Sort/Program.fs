@@ -98,7 +98,6 @@ module Program =
     let config =
         {
             Device = "cuda"
-            NumWorkers = 0
             MaxIters = 2000
             BatchSize = 64
             LearningRate = 5e-4

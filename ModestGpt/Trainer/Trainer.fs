@@ -10,7 +10,6 @@ open TorchSharp.Modules
 type TrainerConfig =
     {
         Device : string
-        NumWorkers : int
         MaxIters : int
         BatchSize : int
         LearningRate : float
@@ -68,7 +67,10 @@ module Trainer =
         // setup the dataloader
         let tensorPairs =
             let loader =
-                new DataLoader(dataset, config.BatchSize, shuffle=true, numWorker=config.NumWorkers)
+                new DataLoader(
+                    dataset,
+                    config.BatchSize,
+                    shuffle = true)
             let rec pairs = seq { yield! loader; yield! pairs }
             if config.MaxIters < 0 then pairs
             else Seq.truncate (config.MaxIters + 1) pairs   // [0 .. MaxIters] inclusive
@@ -101,7 +103,7 @@ module Trainer =
                         Duration = timeEnd - timeStart
                         Loss = loss.item<float32>()
                     }
-                timeEnd, iterNum + 1, Some progress )
+                timeEnd, iterNum + 1, Some progress)
 
             |> Seq.choose (fun (_, _, progressOpt) ->
                 progressOpt)
