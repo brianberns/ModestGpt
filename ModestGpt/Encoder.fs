@@ -10,6 +10,15 @@ type Encoder =
 
 module Encoder =
 
+    let private printable (str : string) =
+        String [|
+            for c in str do
+                if Char.IsAsciiLetterOrDigit(c) || Char.IsPunctuation(c) then
+                    yield c
+                else
+                    yield! $"[{int c}]"
+        |]
+
     /// Initializes an non-merging encoder with the characters
     /// in the given text.
     let private initialize (text : string) =
@@ -30,6 +39,7 @@ module Encoder =
     /// Merges occurrences of the given pair with the given pairs
     /// of content.
     let private merge contentPairs pair =
+        printfn $"Merging tokens {Tuple2.map printable pair}"
         assert(
             contentPairs
                 |> Seq.pairwise

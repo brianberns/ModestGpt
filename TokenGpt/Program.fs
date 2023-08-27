@@ -19,8 +19,11 @@ type TokenDataset(config) =
     inherit Dataset()
 
     let text = File.ReadAllText(config.InputFilePath)
+    do printfn $"Text length: {text.Length}, {set text |> Set.count} distinct"
     let encoder = Encoder.create config.MaxVocabularySize text
+    do printfn $"Vocabulary size: {encoder.VocabularyMap.Count}"
     let encoded = Encoder.encode encoder text
+    do printfn $"Encoded length: {encoded.Length}"
 
     member _.Encoder = encoder
 
@@ -46,7 +49,7 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 256
+            MaxVocabularySize = 100
             BlockSize = 256
             Context = "It is "
         }
