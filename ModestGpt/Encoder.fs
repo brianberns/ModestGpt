@@ -147,7 +147,8 @@ module Encoder =
 
         let decoder =
             encoder.VocabularyMap
-                |> Seq.map (fun (KeyValue(key, value)) -> value, key)
+                |> Map.toSeq
+                |> Seq.map Tuple2.swap
                 |> Map
         assert(decoder.Count = encoder.VocabularyMap.Count)
 

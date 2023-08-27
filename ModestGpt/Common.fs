@@ -31,6 +31,9 @@ module TorchExt =
 
 module Tuple2 =
 
+    let swap (a, b) =
+        b, a
+
     let map f (a, b) =
         f a, f b
 
