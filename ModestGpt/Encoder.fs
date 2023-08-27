@@ -52,14 +52,15 @@ module Encoder =
             }
         (false, pairs)
             ||> Seq.mapFold (fun merged (first, second) ->
+                assert(first.Length + second.Length > 0)
                 if merged then
-                    None, false                              // ignore this pair because previous pair was merged
+                    "", false                                // ignore this pair because previous pair was merged
                 elif (first, second) = pair then
-                    Some (first + second), true              // merge this pair
+                    (first + second), true                   // merge this pair
                 else
-                    Some first, false)
+                    first, false)
             |> fst
-            |> Seq.choose id
+            |> Seq.where ((<>) "")
             |> Seq.toArray
 
     /// Creates an encoder from the given text.
