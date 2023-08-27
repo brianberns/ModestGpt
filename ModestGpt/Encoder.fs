@@ -1,5 +1,7 @@
 ﻿namespace ModestGpt
 
+open System
+
 type Encoder =
     {
         VocabularyMap : Map<string, int>
@@ -8,6 +10,8 @@ type Encoder =
 
 module Encoder =
 
+    /// Initializes an non-merging encoder with the characters
+    /// in the given text.
     let private initialize (text : string) =
         {
             VocabularyMap =
@@ -19,9 +23,37 @@ module Encoder =
             Merges = []
         }
 
-    let create (maxVocabSize : int) (text : string) =
+    let private toContents (text : string) =
+        Seq.map string text
+            |> Seq.toArray
 
-        let rec loop encoder (contents : string[]) =
+    /// Merges occurrences of the given pair with the given pairs
+    /// of content.
+    let private merge contentPairs pair =
+        assert(
+            contentPairs
+                |> Seq.pairwise
+                |> Seq.forall (fun ((_, a), (b, _)) -> a = b))
+        let pairs =
+            seq {
+                yield! contentPairs
+                yield (Array.last contentPairs |> snd, "")   // add pair at the end for the last element
+            }
+        (false, pairs)
+            ||> Seq.mapFold (fun merged (first, second) ->
+                if merged then
+                    None, false                              // ignore this pair because previous pair was merged
+                elif (first, second) = pair then
+                    Some (first + second), true              // merge this pair
+                else
+                    Some first, false)
+            |> fst
+            |> Seq.choose id
+            |> Seq.toArray
+
+    let create maxVocabSize text =
+
+        let rec loop encoder (contents : _[]) =
 
             if encoder.VocabularyMap.Count < maxVocabSize
                 && contents.Length > 1 then
@@ -45,36 +77,42 @@ module Encoder =
                             ((first, second), token) :: encoder.Merges
                     }
                 let contents' =
-                    let pairs =
-                        seq {
-                            yield! contentPairs
-                            yield (Array.last contents, "")     // add pair at the end for the last element
-                        }
-                    (false, pairs)
-                        ||> Seq.mapFold (fun merged (first', second') ->
-                            if merged then
-                                None, false                     // ignore this pair because previous pair was merged
-                            elif (first', second') = (first, second) then
-                                Some (first' + second'), true   // merge this pair
-                            else
-                                Some first', false)
-                        |> fst
-                        |> Seq.choose id
-                        |> Seq.toArray
+                    merge contentPairs (first, second)
 
                 loop encoder' contents'
 
             else encoder
 
         let encoder =
-            let contents =
-                Seq.map string text
-                    |> Seq.toArray
-            loop (initialize text) contents
+            loop (initialize text) (toContents text)
         { encoder with Merges = List.rev encoder.Merges }
 
-    let encode (encoder : Encoder) (text : string) =
-        [| 0 |]
+    let encode encoder text =
+
+        let tryFind pair =
+            encoder.Merges
+                |> List.tryFindIndex (fst >> (=) pair)
+
+        let rec compress contents =
+
+            let contentPairs = Array.pairwise contents
+            let first, second =
+                contentPairs
+                    |> Seq.minBy (
+                        tryFind
+                            >> Option.defaultValue Int32.MaxValue)
+
+            if encoder.VocabularyMap.ContainsKey(first + second) then
+                merge contentPairs (first, second)
+                    |> compress
+            else
+                assert(tryFind (first, second) |> Option.isNone)
+                contents
+
+        toContents text
+            |> compress
+            |> Array.map (fun key ->
+                encoder.VocabularyMap[key])
 
     let decode (encoder : Encoder) (encodedText : int[]) =
         "dummy"
