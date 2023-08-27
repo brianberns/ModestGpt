@@ -93,21 +93,25 @@ module Encoder =
             encoder.Merges
                 |> List.tryFindIndex (fst >> (=) pair)
 
-        let rec compress contents =
+        let rec compress (contents : _[]) =
 
-            let contentPairs = Array.pairwise contents
-            let first, second =
-                contentPairs
-                    |> Seq.minBy (
-                        tryFind
-                            >> Option.defaultValue Int32.MaxValue)
+            if contents.Length > 1 then
 
-            if encoder.VocabularyMap.ContainsKey(first + second) then
-                merge contentPairs (first, second)
-                    |> compress
-            else
-                assert(tryFind (first, second) |> Option.isNone)
-                contents
+                let contentPairs = Array.pairwise contents
+                let first, second =
+                    contentPairs
+                        |> Seq.minBy (
+                            tryFind
+                                >> Option.defaultValue Int32.MaxValue)
+
+                if encoder.VocabularyMap.ContainsKey(first + second) then
+                    merge contentPairs (first, second)
+                        |> compress
+                else
+                    assert(tryFind (first, second) |> Option.isNone)
+                    contents
+
+            else contents
 
         toContents text
             |> compress
@@ -115,4 +119,13 @@ module Encoder =
                 encoder.VocabularyMap[key])
 
     let decode (encoder : Encoder) (encodedText : int[]) =
-        "dummy"
+
+        let decoder =
+            encoder.VocabularyMap
+                |> Seq.map (fun (KeyValue(key, value)) -> value, key)
+                |> Map
+        assert(decoder.Count = encoder.VocabularyMap.Count)
+
+        encodedText
+            |> Seq.map (fun key -> decoder[key])
+            |> String.concat ""
