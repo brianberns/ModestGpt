@@ -8,6 +8,17 @@ type Encoder =
 
 module Encoder =
 
+    let private initialize (text : string) =
+        {
+            VocabularyMap =
+                set text
+                    |> Seq.indexed
+                    |> Seq.map (fun (i, c) ->
+                        string c, i)
+                    |> Map
+            Merges = []
+        }
+
     let create (maxVocabSize : int) (text : string) =
 
         let rec loop encoder (contents : string[]) =
@@ -56,18 +67,11 @@ module Encoder =
             else encoder
 
         let encoder =
-            {
-                VocabularyMap =
-                    Seq.indexed text
-                        |> Seq.map (fun (i, c) ->
-                            string c, i)
-                        |> Map
-                Merges = []
-            }
-        let contents =
-            Seq.map string text
-                |> Seq.toArray
-        loop encoder contents
+            let contents =
+                Seq.map string text
+                    |> Seq.toArray
+            loop (initialize text) contents
+        { encoder with Merges = List.rev encoder.Merges }
 
     let encode (encoder : Encoder) (text : string) =
         [| 0 |]
