@@ -6,8 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Input.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Program.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <ProjectReference Include="..\ModestGpt\ModestGpt.fsproj" />

@@ -58,7 +58,7 @@ module Program =
     // construct the training dataset
     let datasetConfig =
         {
-            InputFilePath = "Input.xt"
+            InputFilePath = "Input.txt"
             BlockSize = 256
             Context = "It is "
         }

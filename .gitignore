@@ -365,3 +365,4 @@ FodyWeavers.xsd
 # Input text
 /Text
 /CharGpt/Input.txt
+/TokenGpt/Input.txt
