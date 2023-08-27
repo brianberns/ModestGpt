@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Encoder.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="Model\Wrappers.fs" />
     <Compile Include="Model\Config.fs" />
