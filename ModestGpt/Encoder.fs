@@ -109,26 +109,30 @@ module Encoder =
     /// Encodes the given text.
     let encode encoder text =
 
-        let tryFind pair =
+        let mergeMap =
             encoder.Merges
-                |> List.tryFindIndex (fst >> (=) pair)
+                |> Seq.indexed
+                |> Seq.map (fun (i, (pair, _)) -> pair, i)
+                |> Map
+        let tryFind pair =
+            mergeMap
+                |> Map.tryFind pair
+                |> Option.defaultValue Int32.MaxValue
 
+        /// Compresses the given text by repeatedly merging the most common
+        /// pairs.
         let rec compress (contents : _[]) =
 
             if contents.Length > 1 then
 
                 let contentPairs = Array.pairwise contents
-                let first, second =
-                    contentPairs
-                        |> Seq.minBy (
-                            tryFind
-                                >> Option.defaultValue Int32.MaxValue)
+                let first, second = Seq.minBy tryFind contentPairs
 
                 if encoder.VocabularyMap.ContainsKey(first + second) then
                     merge contentPairs (first, second)
                         |> compress
                 else
-                    assert(tryFind (first, second) |> Option.isNone)
+                    assert(tryFind (first, second) = Int32.MaxValue)
                     contents
 
             else contents
