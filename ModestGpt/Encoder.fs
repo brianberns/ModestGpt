@@ -10,17 +10,18 @@ type Encoder =
 
 module Encoder =
 
+    /// Makes the given string printable.
     let private printable (str : string) =
         String [|
             for c in str do
-                if Char.IsAsciiLetterOrDigit(c) || Char.IsPunctuation(c) then
-                    yield c
-                else
+                if Char.IsWhiteSpace(c) || Char.IsControl(c) then
                     yield! $"[{int c}]"
+                else
+                    yield c
         |]
 
-    /// Initializes an non-merging encoder with the characters
-    /// in the given text.
+    /// Initializes a non-merging encoder from the characters in
+    /// the given text.
     let private initialize (text : string) =
         {
             VocabularyMap =
@@ -32,11 +33,12 @@ module Encoder =
             Merges = []
         }
 
+    /// Makes a content array from the given text.
     let private toContents (text : string) =
         Seq.map string text
             |> Seq.toArray
 
-    /// Merges occurrences of the given pair with the given pairs
+    /// Merges occurrences of the given pair within the given pairs
     /// of content.
     let private merge contentPairs pair =
         printfn $"Merging tokens {Tuple2.map printable pair}"
@@ -61,13 +63,16 @@ module Encoder =
             |> Seq.choose id
             |> Seq.toArray
 
+    /// Creates an encoder from the given text.
     let create maxVocabSize text =
 
+        /// Attempts to add another token to the encoder.
         let rec loop encoder (contents : _[]) =
 
             if encoder.VocabularyMap.Count < maxVocabSize
                 && contents.Length > 1 then
 
+                    // find next pair of strings to merge into a token
                 let contentPairs = Array.pairwise contents
                 let first, second =
                     contentPairs
@@ -76,6 +81,7 @@ module Encoder =
                         |> fst
                 let token = first + second
 
+                    // add the token to the encoder
                 let encoder' =
                     {
                         VocabularyMap =
@@ -84,8 +90,11 @@ module Encoder =
                                 encoder.VocabularyMap.Count
                                 encoder.VocabularyMap
                         Merges =
-                            ((first, second), token) :: encoder.Merges
+                            let merge = (first, second), token
+                            merge :: encoder.Merges
                     }
+
+                    // merge occurrences of the token in the content
                 let contents' =
                     merge contentPairs (first, second)
 
@@ -95,8 +104,9 @@ module Encoder =
 
         let encoder =
             loop (initialize text) (toContents text)
-        { encoder with Merges = List.rev encoder.Merges }
+        { encoder with Merges = List.rev encoder.Merges }   // simpler merges first
 
+    /// Encodes the given text.
     let encode encoder text =
 
         let tryFind pair =
@@ -128,6 +138,7 @@ module Encoder =
             |> Array.map (fun key ->
                 encoder.VocabularyMap[key])
 
+    /// Decodes the given encoded text.
     let decode (encoder : Encoder) (encodedText : int[]) =
 
         let decoder =
