@@ -7,10 +7,10 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 type EncoderTests() =
 
     let text = File.ReadAllText("Test.txt")
-    let encoder, tokenKeys = Encoder.create 256 text
+    let encoder = Encoder.create 256 text
 
     member _.Text = text
 
     [<TestMethod>]
     member _.Symmetrical() =
-        Assert.AreEqual(text, Encoder.decode encoder tokenKeys)
+        Assert.AreEqual(text, text |> Encoder.encode encoder |> Encoder.decode encoder)

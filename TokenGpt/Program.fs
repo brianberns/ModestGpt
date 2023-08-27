@@ -58,7 +58,7 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 100
+            MaxVocabularySize = 1000
             BlockSize = 256
             Context = "It is "
         }

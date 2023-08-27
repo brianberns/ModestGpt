@@ -11,6 +11,22 @@ type Encoder =
         Merges : List<string * string * string>
     }
 
+type private Category =
+    | Letter
+    | Number
+    | Punctuation
+    | Whitespace
+    | Symbol
+
+module private Category =
+
+    let ofChar c =
+        if Char.IsLetter(c) || c = '\'' then Letter
+        elif Char.IsNumber(c) then Number
+        elif Char.IsPunctuation(c) then Punctuation
+        elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
+        else Symbol
+
 module Encoder =
 
     /// Makes the given string printable.
@@ -79,8 +95,10 @@ module Encoder =
                 let contentPairs = Array.pairwise contents
                 let first, second =
                     contentPairs
+                        |> Seq.where (fun (left : string, right : string) ->
+                            Category.ofChar left[0] = Category.ofChar right[0])
                         |> Seq.groupBy id
-                        |> Seq.maxBy (fun ((left : string, right : string), group) ->
+                        |> Seq.maxBy (fun ((left, right), group) ->
                             Seq.length group, left.Length + right.Length)
                         |> fst
                 let token = first + second
