@@ -14,6 +14,8 @@ But, in a larger sense, we can not dedicate -- we can not consecrate -- we can n
     let encode = Encoder.encode encoder
     let decode = Encoder.decode encoder
 
+    member _.Text = text
+
     [<TestMethod>]
     member _.Symmetrical() =
         Assert.AreEqual(text, text |> encode |> decode)
