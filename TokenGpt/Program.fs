@@ -20,21 +20,20 @@ type TokenDataset(config) =
 
     let text = File.ReadAllText(config.InputFilePath)
     do printfn $"Text length: {text.Length}, {set text |> Set.count} distinct"
-    let encoder = Encoder.create config.MaxVocabularySize text
+    let encoder, tokenKeys = Encoder.create config.MaxVocabularySize text
     do printfn $"Vocabulary size: {encoder.VocabularyMap.Count}"
-    let encoded = Encoder.encode encoder text
-    do printfn $"Encoded length: {encoded.Length}"
+    do printfn $"Encoded length: {tokenKeys.Length}"
 
     member _.Encoder = encoder
 
     member _.BlockSize = config.BlockSize
 
     override _.Count with get() =
-        int64 (encoded.Length - config.BlockSize)
+        int64 (tokenKeys.Length - config.BlockSize)
 
     override _.GetTensor(idx) =
 
-        let chunk = encoded[int idx .. int idx + config.BlockSize]
+        let chunk = tokenKeys[int idx .. int idx + config.BlockSize]
         assert(chunk.Length = config.BlockSize + 1)
 
         torch.tensor(chunk[.. chunk.Length - 2], dtype = torch.long),
