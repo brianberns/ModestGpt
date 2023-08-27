@@ -2,6 +2,7 @@
 
 open System
 
+/// Character-pair encoder.
 type Encoder =
     {
         /// Maps tokens to the their numeric representations.
@@ -11,6 +12,7 @@ type Encoder =
         Merges : List<string * string * string>
     }
 
+/// Character chategory.
 type private Category =
     | Letter
     | Number
@@ -21,7 +23,7 @@ type private Category =
 module private Category =
 
     let ofChar c =
-        if Char.IsLetter(c) || c = '\'' then Letter
+        if Char.IsLetter(c) || c = '\'' then Letter   // apostrophe is considered a letter
         elif Char.IsNumber(c) then Number
         elif Char.IsPunctuation(c) then Punctuation
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
@@ -60,6 +62,7 @@ module Encoder =
     /// Merges occurrences of the given pair within the given pairs
     /// of content.
     let private merge contentPairs pair =
+        // printfn $"Merging {Tuple2.map printable pair}"
         assert(
             contentPairs
                 |> Seq.pairwise
@@ -185,10 +188,12 @@ module Encoder =
     open System.IO
     open System.Text.Json
 
-    let save path (encoder : Encoder) =
+    /// Saves the given encoder to a file.
+    let save path encoder =
         use stream = new FileStream(path, FileMode.Create)
-        JsonSerializer.Serialize(stream, encoder)
+        JsonSerializer.Serialize<Encoder>(stream, encoder)
 
+    /// Loads an encoder from the given file.
     let load path =
         use stream = new FileStream(path, FileMode.Open)
         JsonSerializer.Deserialize<Encoder>(stream)
