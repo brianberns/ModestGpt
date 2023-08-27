@@ -143,7 +143,7 @@ module Encoder =
                 encoder.VocabularyMap[key])
 
     /// Decodes the given encoded text.
-    let decode (encoder : Encoder) (encodedText : int[]) =
+    let decode encoder encodedText =
 
         let decoder =
             encoder.VocabularyMap
@@ -152,5 +152,8 @@ module Encoder =
         assert(decoder.Count = encoder.VocabularyMap.Count)
 
         encodedText
-            |> Seq.map (fun key -> decoder[key])
+            |> Seq.map (fun tokenKey ->
+                match Map.tryFind tokenKey decoder with
+                    | Some token -> token
+                    | _ -> failwith $"Unknown token: {tokenKey}")
             |> String.concat ""
