@@ -62,7 +62,6 @@ module Encoder =
     /// Merges occurrences of the given pair within the given pairs
     /// of content.
     let private merge contentPairs pair =
-        // printfn $"Merging {Tuple2.map printable pair}"
         assert(
             contentPairs
                 |> Seq.pairwise

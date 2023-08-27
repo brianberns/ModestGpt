@@ -37,7 +37,10 @@ type TokenDataset(config) =
             use stream = new FileStream(path, FileMode.Open)
             use reader = new BinaryReader(stream)
             let length = reader.ReadInt32()
-            Array.init length (fun _ -> reader.ReadInt32())
+            let tokenKeys =
+                Array.init length (fun _ -> reader.ReadInt32())
+            assert(Encoder.decode encoder tokenKeys = text)
+            tokenKeys
         else
             let tokenKeys = Encoder.encode encoder text
             use stream = new FileStream(path, FileMode.Create)
@@ -72,8 +75,8 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 200
-            BlockSize = 128
+            MaxVocabularySize = 500
+            BlockSize = 192
             Context = "It is "
         }
     let dataset = new TokenDataset(datasetConfig)
@@ -81,7 +84,7 @@ module Program =
     let model =
         let modelConfig =
             {
-                NumLayer = 6
+                NumLayer = 8
                 NumHead = 6
                 NumEmbed = 192
                 VocabSize = dataset.Encoder.VocabularyMap.Count
