@@ -4,8 +4,11 @@ open System
 
 type Encoder =
     {
+        /// Maps tokens to the their numeric representations.
         VocabularyMap : Map<string, int>
-        Merges : List<(string * string) * string>
+
+        /// Tokens to merge, in priority order. E.g. "do" + "nut" -> "donut".
+        Merges : List<string * string * string>
     }
 
 module Encoder =
@@ -91,7 +94,7 @@ module Encoder =
                                 encoder.VocabularyMap.Count
                                 encoder.VocabularyMap
                         Merges =
-                            let merge = (first, second), token
+                            let merge = first, second, token
                             merge :: encoder.Merges
                     }
 
@@ -119,7 +122,8 @@ module Encoder =
         let mergeMap =
             encoder.Merges
                 |> Seq.indexed
-                |> Seq.map (fun (i, (pair, _)) -> pair, i)
+                |> Seq.map (fun (i, (first, second, _)) ->
+                    (first, second), i)
                 |> Map
         let tryFind pair =
             mergeMap
