@@ -22,16 +22,30 @@ type TokenDataset(config) =
     do printfn $"Text length: {text.Length}, {set text |> Set.count} distinct"
 
     let encoder =
-        let encoderPath = "Encoder.json"
-        if File.Exists(encoderPath) then
-            Encoder.load encoderPath
+        let path = "Encoder.json"
+        if File.Exists(path) then
+            Encoder.load path
         else
             let encoder = Encoder.create config.MaxVocabularySize text
-            Encoder.save encoderPath encoder
+            Encoder.save path encoder
             encoder
-    do printfn $"Vocabulary size: {encoder.VocabularyMap.Count}"
+    do printfn $"Encoder vocabulary size: {encoder.VocabularyMap.Count}"
 
-    let tokenKeys = Encoder.encode encoder text
+    let tokenKeys =
+        let path = config.InputFilePath + ".bin"
+        if File.Exists(path) then
+            use stream = new FileStream(path, FileMode.Open)
+            use reader = new BinaryReader(stream)
+            let length = reader.ReadInt32()
+            Array.init length (fun _ -> reader.ReadInt32())
+        else
+            let tokenKeys = Encoder.encode encoder text
+            use stream = new FileStream(path, FileMode.Create)
+            use writer = new BinaryWriter(stream)
+            writer.Write(tokenKeys.Length)
+            for tokenKey in tokenKeys do
+                writer.Write(tokenKey)
+            tokenKeys
     do printfn $"Encoded length: {tokenKeys.Length}"
 
     member _.Encoder = encoder
@@ -58,8 +72,8 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 1000
-            BlockSize = 256
+            MaxVocabularySize = 200
+            BlockSize = 128
             Context = "It is "
         }
     let dataset = new TokenDataset(datasetConfig)
