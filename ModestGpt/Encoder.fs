@@ -169,3 +169,14 @@ module Encoder =
                     | Some token -> token
                     | _ -> failwith $"Unknown token: {tokenKey}")
             |> String.concat ""
+
+    open System.IO
+    open System.Text.Json
+
+    let save path (encoder : Encoder) =
+        use stream = new FileStream(path, FileMode.Create)
+        JsonSerializer.Serialize(stream, encoder)
+
+    let load path =
+        use stream = new FileStream(path, FileMode.Open)
+        JsonSerializer.Deserialize<Encoder>(stream)
