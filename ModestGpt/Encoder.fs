@@ -11,7 +11,7 @@ type Encoder =
 module Encoder =
 
     /// Makes the given string printable.
-    let private printable (str : string) =
+    let printable (str : string) =
         String [|
             for c in str do
                 if Char.IsWhiteSpace(c) || Char.IsControl(c) then
@@ -41,7 +41,6 @@ module Encoder =
     /// Merges occurrences of the given pair within the given pairs
     /// of content.
     let private merge contentPairs pair =
-        printfn $"Merging tokens {Tuple2.map printable pair}"
         assert(
             contentPairs
                 |> Seq.pairwise
@@ -77,7 +76,8 @@ module Encoder =
                 let first, second =
                     contentPairs
                         |> Seq.groupBy id
-                        |> Seq.maxBy (snd >> Seq.length)
+                        |> Seq.maxBy (fun ((left : string, right : string), group) ->
+                            Seq.length group, left.Length + right.Length)
                         |> fst
                 let token = first + second
 
