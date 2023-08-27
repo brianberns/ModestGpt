@@ -20,8 +20,18 @@ type TokenDataset(config) =
 
     let text = File.ReadAllText(config.InputFilePath)
     do printfn $"Text length: {text.Length}, {set text |> Set.count} distinct"
-    let encoder, tokenKeys = Encoder.create config.MaxVocabularySize text
+
+    let encoder =
+        let encoderPath = "Encoder.json"
+        if File.Exists(encoderPath) then
+            Encoder.load encoderPath
+        else
+            let encoder = Encoder.create config.MaxVocabularySize text
+            Encoder.save encoderPath encoder
+            encoder
     do printfn $"Vocabulary size: {encoder.VocabularyMap.Count}"
+
+    let tokenKeys = Encoder.encode encoder text
     do printfn $"Encoded length: {tokenKeys.Length}"
 
     member _.Encoder = encoder

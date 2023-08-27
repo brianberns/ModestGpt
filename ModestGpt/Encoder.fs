@@ -104,17 +104,11 @@ module Encoder =
 
                 loop encoder' contents'
 
-            else encoder, contents
+            else encoder
 
-        let encoder, contents =
+        let encoder =
             loop (initialize text) (toContents text)
-        let encoder' =
-            { encoder with Merges = List.rev encoder.Merges }   // simpler merges first
-        let tokenKeys =
-            contents
-                |> Array.map (fun tokenKey ->
-                    encoder'.VocabularyMap[tokenKey])
-        encoder', tokenKeys
+        { encoder with Merges = List.rev encoder.Merges }   // simpler merges first
 
     /// Encodes the given text.
     let encode encoder text =
