@@ -24,9 +24,7 @@ module private Category =
 
     /// Determines the category of the given character.
     let ofChar c =
-        if Char.IsLetter(c)
-            || c = ' '                // space and apostrophe also considered letters
-            || c = '\'' then Letter
+        if Char.IsLetter(c) || c = '\'' then Letter   // apostrophe is considered a letter
         elif Char.IsNumber(c) then Number
         elif Char.IsPunctuation(c) then Punctuation
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
@@ -100,11 +98,11 @@ module Encoder =   // to-do: optimize this module for speed.
                 let contentPairs = Array.pairwise contents
                 let first, second =
                     contentPairs
-                        |> Seq.where (fun (left : string, right : string) ->
-                            Category.ofChar left[0] = Category.ofChar right[0])
+                        |> Seq.where (fun (first : string, second : string) ->
+                            Category.ofChar first[0] = Category.ofChar second[0])
                         |> Seq.groupBy id
-                        |> Seq.maxBy (fun ((left, right), group) ->
-                            Seq.length group, left.Length + right.Length)
+                        |> Seq.maxBy (fun ((first, second), group) ->
+                            Seq.length group, first.Length + second.Length)
                         |> fst
                 let token = first + second
 
