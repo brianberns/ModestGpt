@@ -99,12 +99,21 @@ module Encoder =   // to-do: optimize this module for speed.
                 let first, second =
                     contentPairs
                         |> Seq.where (fun (first : string, second : string) ->
-                            Category.ofChar first[0] = Category.ofChar second[0])
+                            if second.Length > 1
+                                && second[0] = ' '
+                                && Category.ofChar second[1] = Letter then   // don't allow anything in front of a space-word
+                                false
+                            else
+                                let catFirst = Category.ofChar first[0]
+                                let catSecond = Category.ofChar second[0]
+                                catFirst = catSecond
+                                    || first = " " && catSecond = Letter)    // create space-word
                         |> Seq.groupBy id
                         |> Seq.maxBy (fun ((first, second), group) ->
                             Seq.length group, first.Length + second.Length)
                         |> fst
                 let token = first + second
+                printfn $"{encoder.VocabularyMap.Count}: Merging {printable first} + {printable second}"
 
                     // add the new token to the encoder
                 let encoder' =
