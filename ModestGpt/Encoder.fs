@@ -22,8 +22,11 @@ type private Category =
 
 module private Category =
 
+    /// Determines the category of the given character.
     let ofChar c =
-        if Char.IsLetter(c) || c = '\'' then Letter   // apostrophe is considered a letter
+        if Char.IsLetter(c)
+            || c = ' '                // space and apostrophe also considered letters
+            || c = '\'' then Letter
         elif Char.IsNumber(c) then Number
         elif Char.IsPunctuation(c) then Punctuation
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
