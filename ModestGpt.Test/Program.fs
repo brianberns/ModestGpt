@@ -1,10 +1,11 @@
 namespace ModestGpt
 
 open System
+open System.IO
 
 module Program =
 
-    let text = EncoderTests().Text |> String.replicate 5
+    let text = File.ReadAllText("Test.txt")
     let dtStart = DateTime.Now
-    let encoder = Encoder.create 512 text
+    let encoder = Encoder.create 1024 text
     printfn $"{DateTime.Now - dtStart}"
