@@ -101,13 +101,13 @@ module Encoder =   // to-do: optimize this module for speed.
                         |> Seq.where (fun (first : string, second : string) ->
                             if second.Length > 1
                                 && second[0] = ' '
-                                && Category.ofChar second[1] = Letter then   // don't allow anything in front of a space-word
+                                && Category.ofChar second[1] = Letter then               // don't allow anything in front of a space-word
                                 false
                             else
-                                let catFirst = Category.ofChar first[0]
+                                let catFirst = Category.ofChar first[first.Length - 1]   // use last char in case of space-word
                                 let catSecond = Category.ofChar second[0]
                                 catFirst = catSecond
-                                    || first = " " && catSecond = Letter)    // create space-word
+                                    || first = " " && catSecond = Letter)                // create space-word
                         |> Seq.groupBy id
                         |> Seq.maxBy (fun ((first, second), group) ->
                             Seq.length group, first.Length + second.Length)
