@@ -26,6 +26,14 @@ type TokenDataset(config) =
         if File.Exists(path) then
             Encoder.load path
         else
+            printfn "Character frequencies:"
+            text
+                |> Seq.groupBy id
+                |> Seq.map (fun (c, group) ->
+                    c, Seq.length group)
+                |> Seq.sortByDescending snd
+                |> Seq.iter (fun (c, n) ->
+                    printfn $"   {Encoder.printable (string c)}: {n}")
             let encoder = Encoder.create config.MaxVocabularySize text
             Encoder.save path encoder
             encoder
@@ -77,7 +85,7 @@ module Program =
             InputFilePath = "Input.txt"
             MaxVocabularySize = 500
             BlockSize = 192
-            Context = "It is "
+            Context = "there was "
         }
     let dataset = new TokenDataset(datasetConfig)
 
