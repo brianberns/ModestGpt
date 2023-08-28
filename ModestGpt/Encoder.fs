@@ -2,7 +2,7 @@
 
 open System
 
-/// Character-pair encoder.
+/// Byte-pair encoder (but not for bytes).
 type Encoder =
     {
         /// Maps tokens to the their numeric representations.
@@ -29,7 +29,7 @@ module private Category =
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
         else Symbol
 
-module Encoder =
+module Encoder =   // to-do: optimize this module for speed.
 
     /// Makes the given string printable.
     let printable (str : string) =
@@ -73,7 +73,7 @@ module Encoder =
             }
         (false, pairs)
             ||> Seq.mapFold (fun merged (first, second) ->
-                assert(first.Length + second.Length > 0)
+                assert(first <> "")
                 if merged then
                     "", false                                // ignore this pair because previous pair was merged
                 elif (first, second) = pair then
@@ -90,8 +90,8 @@ module Encoder =
         /// Attempts to add another token to the encoder.
         let rec loop encoder (contents : _[]) =
 
-            if encoder.VocabularyMap.Count < maxVocabSize
-                && contents.Length > 1 then
+            if encoder.VocabularyMap.Count < maxVocabSize   // any more room?
+                && contents.Length > 1 then                 // anything left to merge?
 
                     // find next pair of strings to merge into a token
                 let contentPairs = Array.pairwise contents
@@ -105,7 +105,7 @@ module Encoder =
                         |> fst
                 let token = first + second
 
-                    // add the token to the encoder
+                    // add the new token to the encoder
                 let encoder' =
                     {
                         VocabularyMap =
@@ -114,8 +114,7 @@ module Encoder =
                                 encoder.VocabularyMap.Count
                                 encoder.VocabularyMap
                         Merges =
-                            let merge = first, second, token
-                            merge :: encoder.Merges
+                            (first, second, token) :: encoder.Merges
                     }
 
                     // merge occurrences of the token in the content
