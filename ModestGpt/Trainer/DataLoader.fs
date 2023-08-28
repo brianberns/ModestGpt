@@ -10,12 +10,13 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 type Dataset = Dataset<Tensor * Tensor>
 
 /// Minimal data loader.
-type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?numWorker, ?dropLast) =
+type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?device, ?numWorker, ?dropLast) =
     inherit DataLoader<Tensor * Tensor, Tensor * Tensor>(
         dataset,
         batchSize,
         DataLoader.Collate,
         ?shuffle = shuffle,
+        ?device = device,
         ?num_worker = numWorker,
         ?drop_last = dropLast)
 

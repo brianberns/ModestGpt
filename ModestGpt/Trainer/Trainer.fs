@@ -71,7 +71,8 @@ module Trainer =
                     new DataLoader(
                         dataset,
                         config.BatchSize,
-                        shuffle = true)
+                        shuffle = true,
+                        device = device)
                 let rec loop epochNum =
                     seq {
                         for epochFrac, x, y in loader.Indexed do
@@ -90,10 +91,7 @@ module Trainer =
                 use _scope = torch.NewDisposeScope()
 
                     // determine loss
-                let loss =
-                    let input = input.To(device)
-                    let target = target.To(device)
-                    model.GetLoss(input, target)
+                let loss = model.GetLoss(input, target)
 
                     // backprop and update the parameters
                 optimizer.zero_grad((*set_to_none=true*))

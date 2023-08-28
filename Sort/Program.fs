@@ -113,7 +113,7 @@ module Program =
     printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
 
     for progress in Trainer.run config model dataset do
-        if progress.IterationNum % 1 = 0 then
+        if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
