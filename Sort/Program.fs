@@ -11,11 +11,11 @@ open ModestGpt
 /// input:  0 0 2 1 0 1 0 0 0 1 1
 /// output: I I I I I 0 0 0 1 1 2
 /// where I is "ignore", as the transformer is reading the input sequence
-type SortDataset(split, ?length, ?num_digits) =
+type SortDataset(split, ?length, ?numDigits) =
     inherit Dataset()
 
     let length = defaultArg length 6
-    let num_digits = defaultArg num_digits 3
+    let numDigits = defaultArg numDigits 3
 
     do assert(List.contains split ["train"; "test"])
 
@@ -25,8 +25,14 @@ type SortDataset(split, ?length, ?num_digits) =
 
         // use rejection sampling to generate an input example from the desired split
         let rec loop () =
+
             // generate some random integers
-            let inp = torch.randint(int64 num_digits, size=[|int64 length|], dtype=torch.long)
+            let inp =
+                torch.randint(
+                    int64 numDigits,
+                    size = [| int64 length |],
+                    dtype = torch.long)
+
             // half of the time let's try to boost the number of examples that 
             // have a large number of repeats, as this is what the model seems to struggle
             // with later in training, and they are kind of rare
@@ -39,9 +45,10 @@ type SortDataset(split, ?length, ?num_digits) =
             if reject then loop ()
             else
                 // figure out if this generated example is train or test based on its hash
-                let inp_split = if torch.rand(1).item() < 0.25f then "test" else "train" // designate 25% of examples as test
-                if inp_split = split then
-                    inp
+                let inpSplit =
+                    if torch.rand(1).item() < 0.25f then "test"   // designate 25% of examples as test
+                    else "train"
+                if inpSplit = split then inp
                 else loop ()
 
         let inp = loop ()
@@ -50,13 +57,14 @@ type SortDataset(split, ?length, ?num_digits) =
         let sol = torch.sort(inp) |> fstv
 
         // concatenate the problem specification and the solution
-        let cat = torch.cat([|inp; sol|], dim=0)
+        let cat = torch.cat([|inp; sol|], dim = 0)
 
         // the inputs to the transformer will be the offset sequence
         let x = cat[Slice(stop = -1)].clone()
         let y = cat[Slice(1)].clone()
+
         // we only want to predict at output locations, mask out the loss at the input locations
-        y[Slice(stop=length-1)] <- tensor -1
+        y[Slice(stop = length-1)] <- tensor -1
         x, y
 
     let tensorPairs =
@@ -66,9 +74,9 @@ type SortDataset(split, ?length, ?num_digits) =
 
     override _.Count with get() = nTensorPairs
 
-    member _.get_vocab_size() = num_digits
+    member _.VocabSize = numDigits
 
-    member _.get_block_size() = length * 2 - 1
+    member _.BlockSize = length * 2 - 1
 
     override _.GetTensor(idx) =
         tensorPairs[int idx]
@@ -82,8 +90,8 @@ module Program =
     let model =
         let config =
             {
-                VocabSize = 3
-                BlockSize = 6 * 2 - 1
+                VocabSize = dataset.VocabSize
+                BlockSize = dataset.BlockSize
                 NumEmbed = 48
                 NumLayer = 3
                 NumHead = 3
@@ -100,7 +108,7 @@ module Program =
             LearningRate = 5e-4
             Beta1 = 0.9
             Beta2 = 0.95
-            WeightDecay = 0.1 // only applied on matmul weights
+            WeightDecay = 0.1
             GradNormClip = 1.0
         }
     printfn $"Trainer config: {config}"
