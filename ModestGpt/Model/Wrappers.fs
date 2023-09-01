@@ -1,18 +1,17 @@
 ﻿namespace ModestGpt
 
-open TorchSharp
-open type torch
-open TorchSharp.Modules
-open FSharp.Core.Operators   // reclaim "float" and other F# operators
-
-open ModestGpt
-
 (*
  * This file contains wrappers around typical TorchSharp modules.
  * These wrappers provide support for GPT initialization and weight
  * decay.
  *)
 
+open TorchSharp
+open type torch
+open TorchSharp.Modules
+open FSharp.Core.Operators   // reclaim "float" and other F# operators
+
+open ModestGpt
 
 /// Module that takes a tensor as input and produces another tensor
 /// as output.
