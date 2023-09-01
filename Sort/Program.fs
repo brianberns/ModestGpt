@@ -14,41 +14,44 @@ open ModestGpt
 type SortDataset(count, ?length, ?numDigits) =
     inherit Dataset()
 
-    // length of sequence to sort
+        // length of sequence to sort
     let length = defaultArg length 6
 
-    /// number of digits in vocabulary
+        // number of digits in vocabulary
     let numDigits = defaultArg numDigits 3
 
-    let makeTensorPair _ =
+    let tensorPairs =
+        Array.init count (fun _ ->
 
-            // generate some random integers
-        let inp =
-            torch.randint(
-                int64 numDigits,
-                size = [| int64 length |],
-                dtype = torch.long)
+                // generate some random integers
+            let inp =
+                torch.randint(
+                    int64 numDigits,
+                    size = [| int64 length |],
+                    dtype = torch.long)
         
-            // solve the task: i.e. sort
-        let sol = torch.sort(inp) |> fstv
+                // solve the task: i.e. sort
+            let sol = torch.sort(inp) |> fstv
 
-            // concatenate the problem specification and the solution
-        let cat = torch.cat([|inp; sol|], dim = 0)
+                // concatenate the problem specification and the solution
+            let cat = torch.cat([|inp; sol|], dim = 0)
 
-            // the inputs to the transformer will be the offset sequence
-        let x = cat[Slice(stop = -1)].clone()
-        let y = cat[Slice(1)].clone()
+                // the inputs to the transformer will be the offset sequence
+            let x = cat[Slice(stop = -1)].clone()
+            let y = cat[Slice(1)].clone()
 
-            // we only want to predict at output locations, mask out the loss at the input locations
-        y[Slice(stop = length-1)] <- tensor -1
-        x, y
+                // we only want to predict at output locations, mask out the loss at the input locations
+            y[Slice(stop = length-1)] <- tensor -1
+            x, y)
 
-    let tensorPairs = Array.init count makeTensorPair
-
+    /// Size of dataset.
     override _.Count with get() = tensorPairs.Length
+
+    /// Get tensor pair by index.
+    override _.GetTensor(idx) = tensorPairs[int idx]
+
     member _.VocabSize = numDigits
     member _.BlockSize = length * 2 - 1
-    override _.GetTensor(idx) = tensorPairs[int idx]
 
 module Program =
 
