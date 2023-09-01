@@ -113,7 +113,6 @@ module Encoder =   // to-do: optimize this module for speed.
                             Seq.length group, first.Length + second.Length)
                         |> fst
                 let token = first + second
-                printfn $"{encoder.VocabularyMap.Count}: Merging {printable first} + {printable second}"
 
                     // add the new token to the encoder
                 let encoder' =

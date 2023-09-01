@@ -83,18 +83,18 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 500
+            MaxVocabularySize = 1000
             BlockSize = 192
-            Context = "there was "
+            Context = "It is"
         }
     let dataset = new TokenDataset(datasetConfig)
 
     let model =
         let modelConfig =
             {
-                NumLayer = 8
-                NumHead = 6
-                NumEmbed = 192
+                NumLayer = 12
+                NumHead = 12
+                NumEmbed = 768
                 VocabSize = dataset.Encoder.VocabularyMap.Count
                 BlockSize = dataset.BlockSize
                 Dropout = 0.1
@@ -106,8 +106,8 @@ module Program =
         {
             Device = "cuda"
             MaxIters = -1
-            BatchSize = 74
-            LearningRate = 5e-4
+            BatchSize = 14
+            LearningRate = 3e-4
             Beta1 = 0.9
             Beta2 = 0.95
             WeightDecay = 0.1 // only applied on matmul weights
@@ -118,14 +118,14 @@ module Program =
 
     for progress in Trainer.run trainerConfig model dataset do
 
-        if progress.IterationNum % 100 = 0 then
+        if progress.IterationNum % 500 = 0 then
             printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 1000 = 0 then
+        if progress.IterationNum % 10000 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...

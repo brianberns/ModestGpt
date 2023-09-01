@@ -15,7 +15,7 @@ type Gpt(config) as self =
 
     let transformer = new Transformer(config)
 
-        // Language model head. In the real GPT-2, this module's parameter are
+        // Language model head. In the real GPT-2, this module's parameters are
         // the mirror image of (and thus shared with) the transformer's token
         // embeddings (wte). I'm not sure why minGPT doesn't do the same.
         // See https://huggingface.co/transformers/v2.0.0/_modules/transformers/modeling_gpt2.html.
@@ -46,7 +46,7 @@ type Gpt(config) as self =
                 ||> Seq.fold (fun idx _ ->
                     use _scope = torch.NewDisposeScope()
                     use idx = idx
-                    // if the sequence context is growing too long we must crop it at BlockSize
+                    // if the sequence context is growing too long we must crop it at block size
                     let idxCond =
                         if idx.size(1) <= config.BlockSize then idx
                         else idx[Colon, Slice(-config.BlockSize)]
