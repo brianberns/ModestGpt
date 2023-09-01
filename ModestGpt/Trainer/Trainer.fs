@@ -5,15 +5,31 @@ open System
 open TorchSharp
 open TorchSharp.Modules
 
+/// Trainer configuration.
 type TrainerConfig =
     {
+        /// Name of device to train on.
         Device : string
-        MaxIters : int
+
+        /// Maximum number of training iterations.
+        MaxIters : Option<int>
+
+        /// Number of samples in a batch.
         BatchSize : int
+
+        /// Learning rate.
         LearningRate : float
+
+        /// Optimizer parameter.
         Beta1 : float
+
+        /// Optimizer parameter.
         Beta2 : float
+
+        /// Weight decay optimizer parameter.
         WeightDecay : float
+
+        /// Gradient norm clip.
         GradNormClip : float
     }
 
@@ -81,8 +97,10 @@ module Trainer =
                     }
                 loop 0
 
-            if config.MaxIters < 0 then tuples
-            else Seq.truncate (config.MaxIters + 1) tuples   // [0 .. MaxIters] inclusive
+            config.MaxIters
+                |> Option.map (fun maxIters ->
+                    Seq.truncate (maxIters + 1) tuples)   // [0 .. MaxIters] inclusive
+                |> Option.defaultValue tuples
 
         model.train()
 

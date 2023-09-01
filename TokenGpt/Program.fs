@@ -105,7 +105,7 @@ module Program =
     let trainerConfig =
         {
             Device = "cuda"
-            MaxIters = -1
+            MaxIters = Option.None
             BatchSize = 14
             LearningRate = 3e-4
             Beta1 = 0.9
