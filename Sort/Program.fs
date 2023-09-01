@@ -45,12 +45,6 @@ type SortDataset(split, ?length, ?num_digits) =
                 else loop ()
 
         let inp = loop ()
-
-        /// First item of a value tuple.
-        let fstv (struct (x, _)) = x
-
-        /// Second item of a value tuple.
-        let sndv (struct (_, y)) = y
         
         // solve the task: i.e. sort
         let sol = torch.sort(inp) |> fstv

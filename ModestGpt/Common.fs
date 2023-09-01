@@ -12,6 +12,12 @@ module ModestGpt =
 [<AutoOpen>]
 module TorchExt =
 
+    /// First item of a value tuple.
+    let fstv (struct (x, _)) = x
+
+    /// Second item of a value tuple.
+    let sndv (struct (_, y)) = y
+
     /// Creates an explicit scalar.
     /// https://github.com/dotnet/TorchSharp/issues/1073
     let scalar (x : float) = x.ToScalar()
