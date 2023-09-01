@@ -11,7 +11,7 @@ open ModestGpt
 /// input:  0 0 2 1 0 1 0 0 0 1 1
 /// output: I I I I I 0 0 0 1 1 2
 /// where I is "ignore", as the transformer is reading the input sequence
-type SortDataset(split, ?length, ?numDigits) =
+type SortDataset(count, ?length, ?numDigits) =
     inherit Dataset()
 
     // length of sequence to sort
@@ -20,58 +20,40 @@ type SortDataset(split, ?length, ?numDigits) =
     /// number of digits in vocabulary
     let numDigits = defaultArg numDigits 3
 
-    do assert(List.contains split ["train"; "test"])
-
     let makeTensorPair _ =
 
-        let rec loop () =
-
             // generate some random integers
-            let inp =
-                torch.randint(
-                    int64 numDigits,
-                    size = [| int64 length |],
-                    dtype = torch.long)
-
-            // figure out if this generated example is train or test based on its hash
-            let inpSplit =
-                if torch.rand(1).item() < 0.25f then "test"   // designate 25% of examples as test
-                else "train"
-            if inpSplit = split then inp
-            else loop ()
-
-        let inp = loop ()
+        let inp =
+            torch.randint(
+                int64 numDigits,
+                size = [| int64 length |],
+                dtype = torch.long)
         
-        // solve the task: i.e. sort
+            // solve the task: i.e. sort
         let sol = torch.sort(inp) |> fstv
 
-        // concatenate the problem specification and the solution
+            // concatenate the problem specification and the solution
         let cat = torch.cat([|inp; sol|], dim = 0)
 
-        // the inputs to the transformer will be the offset sequence
+            // the inputs to the transformer will be the offset sequence
         let x = cat[Slice(stop = -1)].clone()
         let y = cat[Slice(1)].clone()
 
-        // we only want to predict at output locations, mask out the loss at the input locations
+            // we only want to predict at output locations, mask out the loss at the input locations
         y[Slice(stop = length-1)] <- tensor -1
         x, y
 
-    let tensorPairs =
-        Array.init 10000 makeTensorPair
+    let tensorPairs = Array.init count makeTensorPair
 
     override _.Count with get() = tensorPairs.Length
-
     member _.VocabSize = numDigits
-
     member _.BlockSize = length * 2 - 1
-
     override _.GetTensor(idx) = tensorPairs[int idx]
 
 module Program =
 
     ModestGpt.setSeed 0
-
-    let dataset = new SortDataset("train")
+    let dataset = new SortDataset(10000)
 
     let model =
         let config =
@@ -83,7 +65,7 @@ module Program =
                 NumHead = 3
                 Dropout = 0.1
             }
-        printfn $"Model config: {config}"
+        printfn $"Model config:\n{config}"
         new Gpt(config)
 
     let config =
@@ -97,7 +79,7 @@ module Program =
             WeightDecay = 0.1
             GradNormClip = 1.0
         }
-    printfn $"Trainer config: {config}"
+    printfn $"Trainer config:\n{config}"
     printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
 
     for progress in Trainer.run config model dataset do
