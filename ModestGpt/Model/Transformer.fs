@@ -76,6 +76,6 @@ type Transformer(config) as self =
                 device = inp.device)
                 .unsqueeze(0)
 
-        let tokEmb = inp --> wte   // token embeddings of shape (b, t, n_embd)
-        let posEmb = pos --> wpe   // position embeddings of shape (1, t, n_embd)
+        let tokEmb = inp --> wte   // token embeddings of shape (b, t, numEmbed)
+        let posEmb = pos --> wpe   // position embeddings of shape (1, t, numEmbed)
         (tokEmb + posEmb) --> sequential
