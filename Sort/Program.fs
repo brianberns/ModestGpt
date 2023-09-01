@@ -56,7 +56,13 @@ type SortDataset(count, ?length, ?numDigits) =
     /// Get tensor pair by index.
     override _.GetTensor(idx) = tensorPairs[int idx]
 
+    /// Vocabulary size. E.g. {0, 1, 2} -> 3 distinct values.
     member _.VocabSize = numDigits
+
+    /// The length of the sequence that will feed into transformer, 
+    /// containing concatenated input and the output, but -1 because
+    /// the transformer starts making predictions at the last input
+    /// element.
     member _.BlockSize = length * 2 - 1
 
 module Program =
