@@ -1,4 +1,6 @@
-﻿open TorchSharp
+﻿open System
+
+open TorchSharp
 open type torch
 open type TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
@@ -104,7 +106,7 @@ module Program =
     let toString (t : Tensor) =
         t.data<int64>().ToArray()
             |> Array.map (fun i -> char (i + int64 '0'))
-            |> System.String
+            |> String
 
     for progress in Trainer.run trainerConfig model dataset do
 
@@ -135,6 +137,11 @@ module Program =
                             temperature = 1.0,
                             sample = false)[0]
                     let output = (toString y)[dataset.Length ..]
-                    printfn $"   Input: {input}, Output: {output}, Correct: {output = target}")
+                    let color = Console.ForegroundColor
+                    Console.ForegroundColor <-
+                        if output = target then ConsoleColor.Green
+                        else ConsoleColor.Red
+                    printfn $"   Input: {input}, Output: {output}"
+                    Console.ForegroundColor <- color)
             // revert model to training mode
             model.train()
