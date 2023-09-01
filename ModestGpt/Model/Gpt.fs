@@ -24,15 +24,15 @@ type Gpt(config) as self =
     do self.RegisterComponents()
 
     /// Produces logits for the given input.
-    override _.forward(inp) =
-        inp --> transformer --> lmHead
+    override _.forward(input) =
+        input --> transformer --> lmHead
 
     /// Calculates loss for the given input compared to the given targets.
-    member _.GetLoss(inp, targets : Tensor) =
-        let logits = self.forward(inp)
+    member _.GetLoss(input, target : Tensor) =
+        let logits = self.forward(input)
         nn.functional.cross_entropy(
             logits.view(-1, logits.size(-1)),
-            targets.view(-1),
+            target.view(-1),
             ignore_index = -1)
 
     /// Take a conditioning sequence (long tensor of shape (b,t)) and complete

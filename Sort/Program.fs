@@ -10,7 +10,8 @@ open ModestGpt
 /// Which will feed into the transformer concatenated as:
 ///    Input:  0 0 2 1 0 1 0 0 0 1 1
 ///    Output: I I I I I 0 0 0 1 1 2
-/// where I is "ignore", as the transformer is reading the input sequence
+/// where I is -1, a special value that's ignored by the trainer
+/// when calculating loss.
 type SortDataset(count, ?length, ?numDigits) =
     inherit Dataset()
 
