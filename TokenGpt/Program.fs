@@ -133,7 +133,7 @@ module Program =
                     torch.tensor(
                         Encoder.encode dataset.Encoder datasetConfig.Context,
                         dtype = torch.long)
-                let x = x[None, Ellipsis].To(progress.Device)
+                let x = x[None, Ellipsis].To(trainerConfig.Device)
                 let y = model.Generate(x, dataset.BlockSize, temperature = 1.0, sample = true, topK = 10)[0]
                 let completion =
                     y.data<int64>().ToArray()

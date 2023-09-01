@@ -35,18 +35,25 @@ type TrainerConfig =
 
 type Progress =
     {
-        Device : string
+        /// Fractional epoch number. E.g. 1.00 means entire dataset has been processed once.
         EpochNum : float
+
+        /// Iteration number, starting with 0.
         IterationNum : int
+
+        /// Time elapsed during this iteration.
         Duration : TimeSpan
+
+        /// Loss calculated during this iteration.
         Loss : float32
     }
 
 module Trainer =
 
-    let createOptimizer (model : torch.nn.Module) config =
+    /// Creates an optimizer for the given model.
+    let private createOptimizer (model : torch.nn.Module) config =
 
-        // separate out all parameters to those that will and won't experience regularizing weight decay
+            // determine which parameters will experience regularizing weight decay
         let parmGroups =
             [|
                 for mdule in model.modules() do
@@ -69,17 +76,18 @@ module Trainer =
             config.Beta1,
             config.Beta2)
 
+    /// Runs a training loop for the given model using the given data.
     let run (config : TrainerConfig) (model : Gpt) dataset =
 
-        // determine the device we'll train on
+            // determine the device we'll train on
         let device = config.Device
         let model = model.To(device)
-        do printfn $"running on device {device}"
+        do printfn $"Training on device {device}"
 
-        // setup the optimizer
+            // setup the optimizer
         let optimizer = createOptimizer model config
 
-        // setup the dataloader
+            // setup the data loader
         let tensorTuples =
 
             let tuples =
@@ -102,8 +110,10 @@ module Trainer =
                     Seq.truncate (maxIters + 1) tuples)   // [0 .. MaxIters] inclusive
                 |> Option.defaultValue tuples
 
+            // put model into training mode
         model.train()
 
+            // training loop
         ((DateTime.Now, 0, None), tensorTuples)
             ||> Seq.scan (fun (timeStart, iterNum, _) (epochNum, input, target) ->   // would prefer Seq.mapFold, but it is eager (for some reason)
                 use _scope = torch.NewDisposeScope()
@@ -112,17 +122,17 @@ module Trainer =
                 let loss = model.GetLoss(input, target)
 
                     // backprop and update the parameters
-                optimizer.zero_grad((*set_to_none=true*))
+                optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(   // to-do: why?
                     model.parameters(),
                     config.GradNormClip) |> ignore
                 optimizer.step() |> ignore
 
+                    // report progress
                 let timeEnd = DateTime.Now
                 let progress =
                     {
-                        Device = device
                         EpochNum = epochNum
                         IterationNum = iterNum
                         Duration = timeEnd - timeStart
@@ -130,5 +140,6 @@ module Trainer =
                     }
                 timeEnd, iterNum + 1, Some progress)
 
+                // create stream of progress reports
             |> Seq.choose (fun (_, _, progressOpt) ->
                 progressOpt)
