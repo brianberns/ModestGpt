@@ -21,16 +21,16 @@ module TorchExt =
 
     type torch.Tensor with
 
-        /// Moves the tensor to the given device. Friendly F# syntax.
+        /// Friendly F# syntax for moving the tensor to the given device.
         member tensor.To(device : string) = tensor.``to``(device)
 
-        /// Moves the tensor to the given device. Friendly F# syntax.
+        /// Friendly F# syntax for moving the tensor to the given device.
         member tensor.To(device : torch.Device) = tensor.``to``(device)
 
     open System.Runtime.CompilerServices
 
-    /// Moves the module's parameters and buffers to the given device.
-    ///  Friendly F# syntax.
+    /// Friendly F# syntax for moving the module's parameters and buffers
+    /// to the given device.
     [<Extension>]
     type IModuleExt =
         [<Extension>]
@@ -40,7 +40,7 @@ module TorchExt =
 
 module Tuple2 =
 
-    /// Swap's the tuple's items.
+    /// Swaps the tuple's items.
     let swap (a, b) =
         b, a
 
