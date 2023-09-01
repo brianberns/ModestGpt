@@ -7,27 +7,42 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
 
+(*
+ * This file contains wrappers around typical TorchSharp modules.
+ * These wrappers provide support for GPT initialization and weight
+ * decay.
+ *)
+
+
+/// Module that takes a tensor as input and produces another tensor
+/// as output.
 type BaseModule = nn.Module<Tensor, Tensor>
 
 module Init =
 
+    /// Initializes the given using a normal distribution.
     let normal std tensor =
         nn.init.normal_(
             tensor,
             mean = 0.0,
             std = std) |> ignore
 
+    /// Initializes the given tensor with zeros.
     let zeros tensor =
         nn.init.zeros_(tensor) |> ignore
 
+    /// Initializes the given tensor with ones.
     let ones tensor =
         nn.init.ones_(tensor) |> ignore
 
+/// Interface for specifying which of a module's parameters have weight
+/// decay.
 type IWeightDecay =
     abstract member ParameterSettings : seq<Parameter * bool> with get
 
 module WeightDecay =
 
+    /// Answers standard weight decay settings for a linear module.
     let ofLinear (linear : Linear) =
         seq {
             linear.weight, true
@@ -35,6 +50,7 @@ module WeightDecay =
                 linear.bias, false
         }
 
+/// Linear transformation.
 type Linear(inputSize, outputSize, ?hasBias) as self =
     inherit BaseModule("Linear")
 
@@ -52,6 +68,7 @@ type Linear(inputSize, outputSize, ?hasBias) as self =
 
     override _.forward(inp) = inp --> linear
 
+/// Lookup table of dimensional embeddings.
 type Embedding(size, numEmbed) as self =
     inherit BaseModule("Linear")
 
@@ -68,6 +85,7 @@ type Embedding(size, numEmbed) as self =
 
     override _.forward(inp) = inp --> embedding
 
+/// Layer normalization.
 type LayerNorm(shape : int64) as self =
     inherit BaseModule("LayerNorm")
 
