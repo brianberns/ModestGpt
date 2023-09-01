@@ -57,6 +57,9 @@ type SortDataset(count, ?length, ?numDigits) =
     /// Get tensor pair by index.
     override _.GetTensor(idx) = tensorPairs[int idx]
 
+    /// Length of sequence to sort.
+    member _.Length = length
+
     /// Vocabulary size. E.g. {0, 1, 2} -> 3 distinct values.
     member _.VocabSize = numDigits
 
@@ -72,7 +75,7 @@ module Program =
     let dataset = new SortDataset(10000)
 
     let model =
-        let config =
+        let modelConfig =
             {
                 VocabSize = dataset.VocabSize
                 BlockSize = dataset.BlockSize
@@ -81,10 +84,10 @@ module Program =
                 NumHead = 3
                 Dropout = 0.1
             }
-        printfn $"Model config:\n{config}"
-        new Gpt(config)
+        printfn $"Model config:\n{modelConfig}"
+        new Gpt(modelConfig)
 
-    let config =
+    let trainerConfig =
         {
             Device = "cuda"
             MaxIters = Some 2000
@@ -95,13 +98,43 @@ module Program =
             WeightDecay = 0.1
             GradNormClip = 1.0
         }
-    printfn $"Trainer config:\n{config}"
-    printfn $"{ceil (float dataset.Count / float config.BatchSize)} batches/epoch"
+    printfn $"Trainer config:\n{trainerConfig}"
+    printfn $"{ceil (float dataset.Count / float trainerConfig.BatchSize)} batches/epoch"
 
-    for progress in Trainer.run config model dataset do
+    let toList (t : Tensor) =
+        t.data<int64>().ToArray()
+            |> Seq.map int
+            |> Seq.toList
+
+    for progress in Trainer.run trainerConfig model dataset do
+
         if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
+
+        if progress.IterationNum % 1000 = 0 then
+            model.eval()
+            using (torch.no_grad()) (fun _ ->
+                // sample from the model...
+                let x =
+                    torch.randint(
+                        int64 dataset.VocabSize,
+                        size = [| int64 dataset.Length |],
+                        dtype = torch.long)
+                let input = toList x
+                printfn $"   Input:  %A{input}"
+                let x = x[None, Ellipsis].To(trainerConfig.Device)
+                let y =
+                    model.Generate(
+                        x,
+                        dataset.Length,
+                        temperature = 1.0,
+                        sample = false)[0]
+                let output = (toList y)[dataset.Length ..]
+                printfn $"   Output: %A{output}"
+                printfn $"   {output = List.sort input}")
+            // revert model to training mode
+            model.train()
