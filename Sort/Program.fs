@@ -14,16 +14,16 @@ open ModestGpt
 type SortDataset(split, ?length, ?numDigits) =
     inherit Dataset()
 
+    // length of sequence to sort
     let length = defaultArg length 6
+
+    /// number of digits in vocabulary
     let numDigits = defaultArg numDigits 3
 
     do assert(List.contains split ["train"; "test"])
 
-    let nTensorPairs = 10000
-
     let makeTensorPair _ =
 
-        // use rejection sampling to generate an input example from the desired split
         let rec loop () =
 
             // generate some random integers
@@ -33,23 +33,12 @@ type SortDataset(split, ?length, ?numDigits) =
                     size = [| int64 length |],
                     dtype = torch.long)
 
-            // half of the time let's try to boost the number of examples that 
-            // have a large number of repeats, as this is what the model seems to struggle
-            // with later in training, and they are kind of rare
-            let reject =
-                if torch.rand(1).item() < 0.5f then
-                    let struct (unique, _, _) = inp.unique()
-                    // too many unqiue digits, re-sample
-                    unique.NumberOfElements > int64 length / 2L
-                else false
-            if reject then loop ()
-            else
-                // figure out if this generated example is train or test based on its hash
-                let inpSplit =
-                    if torch.rand(1).item() < 0.25f then "test"   // designate 25% of examples as test
-                    else "train"
-                if inpSplit = split then inp
-                else loop ()
+            // figure out if this generated example is train or test based on its hash
+            let inpSplit =
+                if torch.rand(1).item() < 0.25f then "test"   // designate 25% of examples as test
+                else "train"
+            if inpSplit = split then inp
+            else loop ()
 
         let inp = loop ()
         
@@ -68,18 +57,15 @@ type SortDataset(split, ?length, ?numDigits) =
         x, y
 
     let tensorPairs =
-        Array.init nTensorPairs makeTensorPair
+        Array.init 10000 makeTensorPair
 
-    member _.Length = length
-
-    override _.Count with get() = nTensorPairs
+    override _.Count with get() = tensorPairs.Length
 
     member _.VocabSize = numDigits
 
     member _.BlockSize = length * 2 - 1
 
-    override _.GetTensor(idx) =
-        tensorPairs[int idx]
+    override _.GetTensor(idx) = tensorPairs[int idx]
 
 module Program =
 
