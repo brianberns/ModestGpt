@@ -12,7 +12,7 @@ type Encoder =
         Merges : List<string * string * string>
     }
 
-/// Character chategory.
+/// Character category.
 type private Category =
     | Letter
     | Number
