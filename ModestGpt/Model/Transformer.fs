@@ -13,7 +13,7 @@ type FeedForward(config) as self =
         nn.Sequential(
             new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
             nn.GELU(),                                               // activation layer
-            new Projection(size, config))                              // to-do: clarify "residual" dropout
+            new Projection(size, config.NumEmbed, config))                              // to-do: clarify "residual" dropout
 
     do self.RegisterComponents()
 

@@ -6,10 +6,13 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
 
-type Projection(inputSize, config) as self =
+/// Linear projection followed by dropout. ("Projection" typically indicates
+/// a reduction in dimensionality. E.g. Projecting from a high-dimension
+/// space into a lower-dimension space.)
+type Projection(inputSize, outputSize, config) as self =
     inherit BaseModule("Projection")
 
-    let linear = nn.Linear(inputSize, config.NumEmbed)
+    let linear = nn.Linear(inputSize, outputSize)
     let dropout = nn.Dropout(config.Dropout)
 
     do

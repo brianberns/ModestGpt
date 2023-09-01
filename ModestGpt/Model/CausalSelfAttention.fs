@@ -29,7 +29,7 @@ type CausalSelfAttention(config) as self =
     let dropout = nn.Dropout(config.Dropout)
 
         // output projection
-    let outProj = new Projection(config.NumEmbed, config)
+    let outProj = new Projection(config.NumEmbed, config.NumEmbed, config)   // to-do: this doesn't change the dimensionality, so I'm not sure what it's for
 
     do self.RegisterComponents()
 
