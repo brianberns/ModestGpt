@@ -6,10 +6,10 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 open ModestGpt
 
 /// Dataset for the Sort problem. E.g. for problem length 6:
-/// Input: 0 0 2 1 0 1 -> Output: 0 0 0 1 1 2
+///    Input: 0 0 2 1 0 1 -> Output: 0 0 0 1 1 2
 /// Which will feed into the transformer concatenated as:
-/// input:  0 0 2 1 0 1 0 0 0 1 1
-/// output: I I I I I 0 0 0 1 1 2
+///    Input:  0 0 2 1 0 1 0 0 0 1 1
+///    Output: I I I I I 0 0 0 1 1 2
 /// where I is "ignore", as the transformer is reading the input sequence
 type SortDataset(count, ?length, ?numDigits) =
     inherit Dataset()
@@ -24,6 +24,7 @@ type SortDataset(count, ?length, ?numDigits) =
         Array.init count (fun _ ->
 
                 // generate some random integers
+                // e.g. "202010"
             let inp =
                 torch.randint(
                     int64 numDigits,
@@ -31,16 +32,21 @@ type SortDataset(count, ?length, ?numDigits) =
                     dtype = torch.long)
         
                 // solve the task: i.e. sort
+                // e.g. "000122"
             let sol = torch.sort(inp) |> fstv
 
                 // concatenate the problem specification and the solution
+                // e.g. "202010000122"
             let cat = torch.cat([|inp; sol|], dim = 0)
 
                 // the inputs to the transformer will be the offset sequence
+                // e.g. x: "20201000012"
+                //      y:  "02010000122"
             let x = cat[Slice(stop = -1)].clone()
             let y = cat[Slice(1)].clone()
 
                 // we only want to predict at output locations, mask out the loss at the input locations
+                // e.g. "IIIII000122" where I is -1
             y[Slice(stop = length-1)] <- tensor -1
             x, y)
 
