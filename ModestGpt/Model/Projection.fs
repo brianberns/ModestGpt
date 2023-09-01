@@ -7,7 +7,7 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 open ModestGpt
 
 /// Linear projection followed by dropout. ("Projection" typically indicates
-/// a reduction in dimensionality. E.g. Projecting from a high-dimension
+/// a change in dimensionality. E.g. Projecting from a high-dimension
 /// space into a lower-dimension space.)
 type Projection(inputSize, outputSize, config) as self =
     inherit BaseModule("Projection")

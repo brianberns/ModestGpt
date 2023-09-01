@@ -9,11 +9,10 @@ open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
 
-/// Causal: only looks at previous tokens.
+/// Multi-head masked self-attention.
 type CausalSelfAttention(config) as self =
     inherit BaseModule("CausalSelfAttention")
 
-    let blockSize = config.BlockSize
     do assert(config.NumEmbed % config.NumHead = 0)
 
         // query, key, value projections for all heads, but in a batch
@@ -21,6 +20,7 @@ type CausalSelfAttention(config) as self =
 
         // causal mask to ensure that attention is only applied to the left in the input sequence
     let bias =
+        let blockSize = config.BlockSize
         (torch.ones(blockSize, blockSize)
             |> torch.tril)
             .view(1, 1, blockSize, blockSize)
@@ -37,6 +37,7 @@ type CausalSelfAttention(config) as self =
 
             // batch size, sequence length, embedding dimensionality (numEmbed)
         let B, T, C = Tuple3.ofArray inp.shape
+        assert(T <= config.BlockSize)
         assert(C = config.NumEmbed)
 
             // calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -64,5 +65,5 @@ type CausalSelfAttention(config) as self =
         (att @@ value)
             .transpose(1, 2)
             .contiguous()
-            .view(B, T, C) // re-assemble all head outputs side by side
-            --> outProj   // output projection
+            .view(B, T, C)   // re-assemble all head outputs side by side
+            --> outProj      // output projection
