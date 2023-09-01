@@ -5,15 +5,16 @@ open type torch
 
 open ModestGpt
 
+/// Multi-layer perceptron.
 type FeedForward(config) as self =
     inherit BaseModule("FeedForward")
 
-    let size = 4 * config.NumEmbed
     let sequential =
+        let size = 4 * config.NumEmbed                       // increase dimensionality by 4x
         nn.Sequential(
-            new Linear(config.NumEmbed, size),                       // to-do: clarify "c_fc" name
-            nn.GELU(),                                               // activation layer
-            new Projection(size, config.NumEmbed, config))                              // to-do: clarify "residual" dropout
+            new Linear(config.NumEmbed, size),               // fully-connected layer ("fc")
+            nn.GELU(),                                       // activation layer
+            new Projection(size, config.NumEmbed, config))   // project back to original dimensionality
 
     do self.RegisterComponents()
 
@@ -23,11 +24,11 @@ type FeedForward(config) as self =
 type TransformerBlock(config) as self =
     inherit BaseModule("TransformerBlock")
 
-    let layer1 =
+    let attn =
         nn.Sequential(
             new LayerNorm(config.NumEmbed),
             new CausalSelfAttention(config))
-    let layer2 =
+    let mlp =
         nn.Sequential(
             new LayerNorm(config.NumEmbed),
             new FeedForward(config))
@@ -35,32 +36,46 @@ type TransformerBlock(config) as self =
     do self.RegisterComponents()
 
     override _.forward(inp) =
-        let x = inp + (inp --> layer1)
-        x + (x --> layer2)
+        let x = inp + (inp --> attn)   // residual ("skip") connection at both layers
+        x + (x --> mlp)
 
+/// Entire transformer.
 type Transformer(config) as self =
     inherit BaseModule("Transformer")
 
+        // token embeddings
     let wte = new Embedding(config.VocabSize, config.NumEmbed)
+
+        // position embeddings
     let wpe = new Embedding(config.BlockSize, config.NumEmbed)
+
     let sequential =
         let blocks =
             Array.init config.NumLayer (fun _ ->
                 new TransformerBlock(config) :> BaseModule)
+                |> nn.Sequential
         nn.Sequential(
             nn.Dropout(config.Dropout),
-            nn.Sequential(blocks),
+            blocks,
             new LayerNorm(config.NumEmbed))
 
     do self.RegisterComponents()
 
     override _.forward(inp) =
-        let device = inp.device
-        let b, t = Tuple2.ofArray inp.shape
+
+            // get sequence length
+        let _b, t = Tuple2.ofArray inp.shape
         if t > config.BlockSize then
             failwith $"Cannot forward sequence of length {t}, block size is only {config.BlockSize}"
-        let pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) // shape (1, t)
 
-        let tok_emb = inp --> wte // token embeddings of shape (b, t, n_embd)
-        let pos_emb = pos --> wpe // position embeddings of shape (1, t, n_embd)
-        (tok_emb + pos_emb) --> sequential
+            // position indexes of shape (1, t)
+        let pos =
+            torch.arange(
+                0, t,
+                dtype = torch.long,
+                device = inp.device)
+                .unsqueeze(0)
+
+        let tokEmb = inp --> wte   // token embeddings of shape (b, t, n_embd)
+        let posEmb = pos --> wpe   // position embeddings of shape (1, t, n_embd)
+        (tokEmb + posEmb) --> sequential

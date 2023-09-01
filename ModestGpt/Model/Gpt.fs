@@ -19,13 +19,13 @@ type Gpt(config) as self =
         // the mirror image of (and thus shared with) the transformer's token
         // embeddings (wte). I'm not sure why minGPT doesn't do the same.
         // See https://huggingface.co/transformers/v2.0.0/_modules/transformers/modeling_gpt2.html.
-    let lm_head = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
+    let lmHead = new Linear(config.NumEmbed, config.VocabSize, hasBias = false)
 
     do self.RegisterComponents()
 
     /// Produces logits for the given input.
     override _.forward(inp) =
-        inp --> transformer --> lm_head
+        inp --> transformer --> lmHead
 
     /// Calculates loss for the given input compared to the given targets.
     member _.GetLoss(inp, targets : Tensor) =
