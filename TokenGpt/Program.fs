@@ -92,11 +92,11 @@ module Program =
     let model =
         let modelConfig =
             {
-                NumLayer = 12
-                NumHead = 12
-                NumEmbed = 768
                 VocabSize = dataset.Encoder.VocabularyMap.Count
                 BlockSize = dataset.BlockSize
+                NumEmbed = 768
+                NumLayer = 12
+                NumHead = 12
                 Dropout = 0.1
             }
         printfn $"Model config: {modelConfig}"

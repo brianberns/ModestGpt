@@ -88,11 +88,11 @@ module Program =
     let model =
         let config =
             {
-                NumLayer = 3
-                NumHead = 3
-                NumEmbed = 48
                 VocabSize = 3
                 BlockSize = 6 * 2 - 1
+                NumEmbed = 48
+                NumLayer = 3
+                NumHead = 3
                 Dropout = 0.1
             }
         printfn $"Model config: {config}"

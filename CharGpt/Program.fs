@@ -67,11 +67,11 @@ module Program =
     let model =
         let modelConfig =
             {
-                NumLayer = 6
-                NumHead = 6
-                NumEmbed = 192
                 VocabSize = dataset.get_vocab_size()
                 BlockSize = dataset.get_block_size()
+                NumEmbed = 192
+                NumLayer = 6
+                NumHead = 6
                 Dropout = 0.1
             }
         printfn $"Model config: {modelConfig}"
