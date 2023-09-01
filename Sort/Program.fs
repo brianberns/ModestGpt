@@ -90,7 +90,7 @@ module Program =
     let trainerConfig =
         {
             Device = "cuda"
-            MaxIters = Some 2000
+            MaxIters = Some 200
             BatchSize = 64
             LearningRate = 5e-4
             Beta1 = 0.9
@@ -108,33 +108,32 @@ module Program =
 
     for progress in Trainer.run trainerConfig model dataset do
 
-        if progress.IterationNum % 100 = 0 then
+        if progress.IterationNum % 10 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 1000 = 0 then
+        if progress.IterationNum % 10 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
-                // sample from the model...
-                let x =
-                    torch.randint(
-                        int64 dataset.VocabSize,
-                        size = [| int64 dataset.Length |],
-                        dtype = torch.long)
-                let input = toList x
-                printfn $"   Input:  %A{input}"
-                let x = x[None, Ellipsis].To(trainerConfig.Device)
-                let y =
-                    model.Generate(
-                        x,
-                        dataset.Length,
-                        temperature = 1.0,
-                        sample = false)[0]
-                let output = (toList y)[dataset.Length ..]
-                printfn $"   Output: %A{output}"
-                printfn $"   {output = List.sort input}")
+                for i = 1 to 5 do
+                    // sample from the model...
+                    let x =
+                        torch.randint(
+                            int64 dataset.VocabSize,
+                            size = [| int64 dataset.Length |],
+                            dtype = torch.long)
+                    let input = toList x
+                    let x = x[None, Ellipsis].To(trainerConfig.Device)
+                    let y =
+                        model.Generate(
+                            x,
+                            dataset.Length,
+                            temperature = 1.0,
+                            sample = false)[0]
+                    let output = (toList y)[dataset.Length ..]
+                    printfn $"   Input: %A{input}, Output: %A{output}, Correct: {output = List.sort input}")
             // revert model to training mode
             model.train()
