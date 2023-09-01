@@ -72,7 +72,7 @@ type SortDataset(count, ?length, ?numDigits) =
 module Program =
 
     ModestGpt.setSeed 0
-    let dataset = new SortDataset(10000)
+    let dataset = new SortDataset(10000, length = 20, numDigits = 5)
 
     let model =
         let modelConfig =
@@ -90,7 +90,7 @@ module Program =
     let trainerConfig =
         {
             Device = "cuda"
-            MaxIters = Some 200
+            MaxIters = Some 3000
             BatchSize = 64
             LearningRate = 5e-4
             Beta1 = 0.9
@@ -101,31 +101,32 @@ module Program =
     printfn $"Trainer config:\n{trainerConfig}"
     printfn $"{ceil (float dataset.Count / float trainerConfig.BatchSize)} batches/epoch"
 
-    let toList (t : Tensor) =
+    let toString (t : Tensor) =
         t.data<int64>().ToArray()
-            |> Seq.map int
-            |> Seq.toList
+            |> Array.map (fun i -> char (i + int64 '0'))
+            |> System.String
 
     for progress in Trainer.run trainerConfig model dataset do
 
-        if progress.IterationNum % 10 = 0 then
+        if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %A, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 10 = 0 then
+        if progress.IterationNum % 500 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
-                for i = 1 to 5 do
+                for i = 1 to 10 do
                     // sample from the model...
                     let x =
                         torch.randint(
                             int64 dataset.VocabSize,
                             size = [| int64 dataset.Length |],
                             dtype = torch.long)
-                    let input = toList x
+                    let input = toString x
+                    let target = x.sort(0) |> fstv |> toString
                     let x = x[None, Ellipsis].To(trainerConfig.Device)
                     let y =
                         model.Generate(
@@ -133,7 +134,7 @@ module Program =
                             dataset.Length,
                             temperature = 1.0,
                             sample = false)[0]
-                    let output = (toList y)[dataset.Length ..]
-                    printfn $"   Input: %A{input}, Output: %A{output}, Correct: {output = List.sort input}")
+                    let output = (toString y)[dataset.Length ..]
+                    printfn $"   Input: {input}, Output: {output}, Correct: {output = target}")
             // revert model to training mode
             model.train()
