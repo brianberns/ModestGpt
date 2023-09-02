@@ -91,14 +91,13 @@ module Encoder =   // to-do: optimize this module for speed.
         /// Attempts to add another token to the encoder.
         let rec loop encoder (contents : _[]) =
 
-            if encoder.VocabularyMap.Count < maxVocabSize   // any more room?
-                && contents.Length > 1 then                 // anything left to merge?
+            if encoder.VocabularyMap.Count < maxVocabSize then  // any more room?
 
                     // find next pair of strings to merge into a token
                 let contentPairs = Array.pairwise contents
-                let first, second =
+                let mergeablePairs =
                     contentPairs
-                        |> Seq.where (fun (first : string, second : string) ->
+                        |> Array.where (fun (first : string, second : string) ->
                             if second.Length > 1
                                 && second[0] = ' '
                                 && Category.ofChar second[1] = Letter then               // don't allow anything in front of a space-word
@@ -108,29 +107,36 @@ module Encoder =   // to-do: optimize this module for speed.
                                 let catSecond = Category.ofChar second[0]
                                 catFirst = catSecond
                                     || first = " " && catSecond = Letter)                // create space-word
-                        |> Seq.groupBy id
-                        |> Seq.maxBy (fun ((first, second), group) ->
-                            Seq.length group, first.Length + second.Length)
-                        |> fst
-                let token = first + second
 
-                    // add the new token to the encoder
-                let encoder' =
-                    {
-                        VocabularyMap =
-                            Map.add
-                                token
-                                encoder.VocabularyMap.Count
-                                encoder.VocabularyMap
-                        Merges =
-                            (first, second, token) :: encoder.Merges
-                    }
+                    // anything left to merge?
+                if mergeablePairs.Length > 0 then
+                    let first, second =
+                        mergeablePairs
+                            |> Seq.groupBy id
+                            |> Seq.maxBy (fun ((first, second), group) ->
+                                Seq.length group, first.Length + second.Length)
+                            |> fst
+                    let token = first + second
 
-                    // merge occurrences of the token in the content
-                let contents' =
-                    merge contentPairs (first, second)
+                        // add the new token to the encoder
+                    let encoder' =
+                        {
+                            VocabularyMap =
+                                Map.add
+                                    token
+                                    encoder.VocabularyMap.Count
+                                    encoder.VocabularyMap
+                            Merges =
+                                (first, second, token) :: encoder.Merges
+                        }
 
-                loop encoder' contents'
+                        // merge occurrences of the token in the content
+                    let contents' =
+                        merge contentPairs (first, second)
+
+                    loop encoder' contents'
+
+                else encoder
 
             else encoder
 
