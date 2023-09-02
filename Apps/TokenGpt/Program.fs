@@ -64,6 +64,7 @@ type TokenDataset(config) =
     member _.BlockSize = config.BlockSize
 
     override _.Count with get() =
+        assert(tokenKeys.Length > config.BlockSize)
         int64 (tokenKeys.Length - config.BlockSize)
 
     override _.GetTensor(idx) =
@@ -84,8 +85,8 @@ module Program =
         {
             InputFilePath = "Input.txt"
             MaxVocabularySize = 1000
-            BlockSize = 192
-            Context = "Mr. Holmes and Mr. Darcy "
+            BlockSize = 128
+            Context = "Tom and Jane are friends. One day, Jane goes to Tom's house. Tom has a big pot of soup. He wants to share it with Jane. \"Jane, do you want some soup?\" Tom asks. \"Yes, please. It looks yummy,\" Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is "
         }
     let dataset = new TokenDataset(datasetConfig)
 
@@ -94,9 +95,9 @@ module Program =
             {
                 VocabSize = dataset.Encoder.VocabularyMap.Count
                 BlockSize = dataset.BlockSize
-                NumEmbed = 768
-                NumLayer = 12
-                NumHead = 12
+                NumEmbed = 512
+                NumLayer = 8
+                NumHead = 16
                 Dropout = 0.1
             }
         printfn $"Model config: {modelConfig}"
@@ -106,7 +107,7 @@ module Program =
         {
             Device = "cuda"
             MaxIters = Option.None
-            BatchSize = 14
+            BatchSize = 64
             LearningRate = 3e-4
             Beta1 = 0.9
             Beta2 = 0.95

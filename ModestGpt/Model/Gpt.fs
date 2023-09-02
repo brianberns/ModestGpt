@@ -23,6 +23,11 @@ type Gpt(config) as self =
 
     do self.RegisterComponents()
 
+    do
+        // report number of parameters (note we don't count the decoder parameters in lm_head)
+        let n_params = Seq.sum [ for p in transformer.parameters() -> p.numel() ]
+        printfn "Number of parameters: %d" n_params
+
     /// Produces logits for the given input.
     override _.forward(input) =
         input --> transformer --> lmHead
