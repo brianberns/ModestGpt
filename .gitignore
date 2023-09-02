@@ -363,6 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # Input text
-/Text
-/CharGpt/Input.txt
-/TokenGpt/Input.txt
+/Apps/Text
+/Apps/CharGpt/Input.txt
+/Apps/TokenGpt/Input.txt
+

@@ -16,7 +16,7 @@
   <ItemGroup />
 
   <ItemGroup>
-    <ProjectReference Include="..\ModestGpt\ModestGpt.fsproj" />
+    <ProjectReference Include="..\..\ModestGpt\ModestGpt.fsproj" />
   </ItemGroup>
 
 </Project>
