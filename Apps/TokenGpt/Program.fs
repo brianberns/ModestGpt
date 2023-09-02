@@ -85,7 +85,7 @@ module Program =
             InputFilePath = "Input.txt"
             MaxVocabularySize = 1000
             BlockSize = 192
-            Context = "It is"
+            Context = "Mr. Holmes and Mr. Darcy "
         }
     let dataset = new TokenDataset(datasetConfig)
 
@@ -140,6 +140,6 @@ module Program =
                         |> Array.map int
                         |> Encoder.decode dataset.Encoder
                 printfn "%s" completion)
-            model.save("model.pt") |> ignore
+            model.save("model.dat") |> ignore
             // revert model to training mode
             model.train()

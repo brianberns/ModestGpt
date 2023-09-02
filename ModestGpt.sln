@@ -13,6 +13,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Sort", "Apps\Sort\Sort.fspr
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "CharGpt", "Apps\CharGpt\CharGpt.fsproj", "{02F34041-B776-452D-81C0-866644A7D856}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Interact", "Apps\Interact\Interact.fsproj", "{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -39,6 +41,10 @@ Global
 		{02F34041-B776-452D-81C0-866644A7D856}.Debug|x64.Build.0 = Debug|x64
 		{02F34041-B776-452D-81C0-866644A7D856}.Release|x64.ActiveCfg = Release|x64
 		{02F34041-B776-452D-81C0-866644A7D856}.Release|x64.Build.0 = Release|x64
+		{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}.Debug|x64.ActiveCfg = Debug|x64
+		{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}.Debug|x64.Build.0 = Debug|x64
+		{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}.Release|x64.ActiveCfg = Release|x64
+		{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -362,8 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Input text
+# Input text and other resources
 /Apps/Text
 /Apps/CharGpt/Input.txt
 /Apps/TokenGpt/Input.txt
-
+/Apps/Interact/Encoder.json
+/Apps/Interact/Input.txt.bin
+/Apps/Interact/model.dat
