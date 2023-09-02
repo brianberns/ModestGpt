@@ -107,7 +107,7 @@ module Program =
         {
             Device = "cuda"
             MaxIters = Option.None
-            BatchSize = 64
+            BatchSize = 54
             LearningRate = 3e-4
             Beta1 = 0.9
             Beta2 = 0.95
