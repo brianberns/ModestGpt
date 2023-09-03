@@ -8,8 +8,6 @@ open ModestGpt
 
 module Program =
 
-    ModestGpt.setSeed 0
-
     let device = "cpu"
     let encoder = Encoder.load "Encoder.json"
     let config =
@@ -23,6 +21,7 @@ module Program =
         }
     let model = (new Gpt(config)).To(device)
     model.load("model.dat") |> ignore
+    model.eval()
 
     let rec loop () =
 
