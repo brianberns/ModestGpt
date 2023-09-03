@@ -40,7 +40,6 @@ module private TokenList =
             |> Seq.pairwise
             |> Seq.map (fun ((i, first), (j, second)) ->
                 (i, j), (first, second))
-            |> Seq.toArray
 
 /// Byte-pair encoder (but not for bytes).
 type Encoder =
@@ -91,13 +90,12 @@ module Encoder =
     let create maxVocabSize text =
 
         /// Attempts to add another token to the encoder.
-        let rec loop encoder (contents : TokenList) =
+        let rec loop encoder contents =
 
             if encoder.VocabularyMap.Count < maxVocabSize then  // any more room?
 
                     // find next pair of strings to merge into a token
-                let contentPairs = TokenList.pairwise contents
-                contentPairs
+                TokenList.pairwise contents
                     |> Seq.where (fun (_, (first : string, second : string)) ->
                         if second.Length > 1
                             && second[0] = ' '
@@ -158,9 +156,8 @@ module Encoder =
 
             if contents.Count > 1 then
 
-                let contentPairs = TokenList.pairwise contents
                 let (first, second), indexPairs =
-                    contentPairs
+                    TokenList.pairwise contents
                         |> Seq.groupBy snd
                         |> Seq.map (fun (pair, group) ->
                             pair, Seq.map fst group)
