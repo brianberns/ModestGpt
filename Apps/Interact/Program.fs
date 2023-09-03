@@ -8,15 +8,15 @@ open ModestGpt
 
 module Program =
 
-    let device = "cuda"
+    let device = "cpu"
     let encoder = Encoder.load "Encoder.json"
     let config =
         {
             VocabSize = encoder.VocabularyMap.Count
-            BlockSize = 192
-            NumEmbed = 768
-            NumLayer = 12
-            NumHead = 12
+            BlockSize = 128
+            NumEmbed = 512
+            NumLayer = 8
+            NumHead = 16
             Dropout = 0.1
         }
     let model = (new Gpt(config)).To(device)
