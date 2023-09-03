@@ -31,9 +31,7 @@ module Encoder =
 
     let create text =
         let encoding = Encoding.Get("cl100k_base")
-        let bigKeys =
-            encoding.EncodeWithAllAllowedSpecial(text)
-                |> Seq.toArray
+        let bigKeys = encoding.Encode(text) |> Seq.toArray
         let smallToBigPairs =
             set bigKeys
                 |> Seq.indexed
@@ -50,7 +48,11 @@ module Encoder =
     let encode text encoder =
         encoder.Encoding
             .EncodeWithAllAllowedSpecial(text)
-            |> Seq.map (fun bigKey -> encoder.BigToSmallMap[bigKey])
+            |> Seq.map (fun bigKey ->
+                match Map.tryFind bigKey encoder.BigToSmallMap with
+                    | Some smallKey -> smallKey
+                    | None ->
+                        failwith $"Missing token {bigKey}: '{encoder.Encoding.Decode([bigKey])}'")
             |> Seq.toArray
 
     let decode smallKeys encoder =
@@ -63,7 +65,14 @@ module Encoder =
 type TokenDataset(config) =
     inherit Dataset()
 
-    let text = File.ReadAllText(config.InputFilePath)
+    let text =
+        config.InputFilePath
+            |> File.ReadLines
+            |> Seq.map (fun line ->
+                if line.StartsWith("<|endoftext|>") then "%%"
+                else line)
+            |> Seq.truncate 1000000
+            |> String.concat "\n"
     do printfn $"Text length: {text.Length}"
 
     let encoder = Encoder.create text
@@ -121,7 +130,7 @@ module Program =
         {
             Device = "cuda"
             MaxIters = Option.None
-            BatchSize = 54
+            BatchSize = 36
             LearningRate = 3e-4
             Beta1 = 0.9
             Beta2 = 0.95
