@@ -21,10 +21,9 @@
 
   <ItemGroup />
 
-  <ItemGroup />
-
   <ItemGroup>
     <ProjectReference Include="..\..\ModestGpt\ModestGpt.fsproj" />
+    <ProjectReference Include="..\TokenGpt\TokenGpt.fsproj" />
   </ItemGroup>
 
 </Project>

@@ -1,11 +1,11 @@
-﻿open System
+﻿namespace TokenGpt
+
+open System
 open System.IO
 
 open TorchSharp
 open type torch.TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
-
-open Tiktoken
 
 open ModestGpt
 
@@ -15,52 +15,6 @@ type DatasetConfig =
         BlockSize : int
         Context : string
     }
-
-type Encoder =
-    {
-        Encoding : Encoding
-        SmallToBigMap : Map<(*smallKey*) int, (*bigKey*) int>
-        BigToSmallMap : Map<(*bigKey*) int, (*smallKey*) int>
-    }
-
-    member this.VocabSize =
-        assert(this.BigToSmallMap.Count = this.SmallToBigMap.Count)
-        this.SmallToBigMap.Count
-
-module Encoder =
-
-    let create text =
-        let encoding = Encoding.Get("cl100k_base")
-        let bigKeys = encoding.Encode(text) |> Seq.toArray
-        let smallToBigPairs =
-            set bigKeys
-                |> Seq.indexed
-                |> Seq.toArray
-        {
-            Encoding = encoding
-            SmallToBigMap = Map smallToBigPairs
-            BigToSmallMap =
-                smallToBigPairs
-                    |> Seq.map Tuple2.swap
-                    |> Map
-        }
-
-    let encode text encoder =
-        encoder.Encoding
-            .EncodeWithAllAllowedSpecial(text)
-            |> Seq.map (fun bigKey ->
-                match Map.tryFind bigKey encoder.BigToSmallMap with
-                    | Some smallKey -> smallKey
-                    | None ->
-                        failwith $"Missing token {bigKey}: '{encoder.Encoding.Decode([bigKey])}'")
-            |> Seq.toArray
-
-    let decode smallKeys encoder =
-        smallKeys
-            |> Seq.map (fun smallKey ->
-                encoder.SmallToBigMap[smallKey])
-            |> Seq.toArray
-            |> encoder.Encoding.Decode
 
 type TokenDataset(config) =
     inherit Dataset()
@@ -75,13 +29,13 @@ type TokenDataset(config) =
             |> String.concat "\n"
     do printfn $"Text length: {text.Length}"
 
-    let encoder = Encoder.create text
-    let tokenKeys = Encoder.encode text encoder
+    let encoder = Encoder.ofText text
+    let tokenKeys = Encoder.encode encoder text
     do printfn $"Encoded length: {tokenKeys.Length}"
 
-    member _.Encode(str) = Encoder.encode str encoder
+    member _.Encode(str) = Encoder.encode encoder str
 
-    member _.Decode(tokenKeys) = Encoder.decode tokenKeys encoder
+    member _.Decode(tokenKeys) = Encoder.decode encoder tokenKeys
 
     member _.VocabSize = encoder.VocabSize
 

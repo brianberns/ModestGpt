@@ -5,6 +5,7 @@ open type torch.TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
 open ModestGpt
+open TokenGpt
 
 module Program =
 
@@ -12,7 +13,7 @@ module Program =
     let encoder = Encoder.load "Encoder.json"
     let config =
         {
-            VocabSize = encoder.VocabularyMap.Count
+            VocabSize = encoder.VocabSize
             BlockSize = 128
             NumEmbed = 512
             NumLayer = 8

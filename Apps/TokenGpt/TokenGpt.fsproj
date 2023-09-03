@@ -10,6 +10,7 @@
     <Content Include="Input.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Compile Include="Encoder.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
