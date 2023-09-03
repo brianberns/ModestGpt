@@ -36,11 +36,7 @@ module Program =
                 device = device,
                 dtype = torch.long)[None, Ellipsis]
         let y =
-            model.Generate(
-                x,
-                config.BlockSize,
-                temperature = 1.0,
-                sample = false)[0]
+            model.Generate(x, config.BlockSize)[0]
         let completion =
             y.data<int64>().ToArray()
                 |> Array.map int
