@@ -31,7 +31,9 @@ type TokenDataset(config) =
 
     let encoder = Encoder.ofText text
     let tokenKeys = Encoder.encode encoder text
-    do printfn $"Encoded length: {tokenKeys.Length}"
+    do
+        printfn $"Encoded length: {tokenKeys.Length}"
+        Encoder.save "Encoder.json" encoder
 
     member _.Encode(str) = Encoder.encode encoder str
 
@@ -96,14 +98,14 @@ module Program =
 
     for progress in Trainer.run trainerConfig model dataset do
 
-        if progress.IterationNum % 100 = 0 then
+        if progress.IterationNum % 1000 = 0 then
             printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 10000 = 0 then
+        if progress.IterationNum % 5000 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...

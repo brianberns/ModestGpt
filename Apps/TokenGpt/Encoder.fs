@@ -28,11 +28,12 @@ type Encoder =
 module Encoder =
 
     /// Creates an encoder.
-    let private create encodingName encoding bigKeys =
+    let private create encodingName encoding (bigKeys : Set<_>) =
         {
             EncodingName = encodingName
             Encoding = encoding
-            SmallToBigMap = bigKeys
+            SmallToBigMap =
+                Seq.toArray bigKeys
             BigToSmallMap =
                 bigKeys
                     |> Seq.mapi (fun smallKey bigKey ->
@@ -44,7 +45,7 @@ module Encoder =
     let ofText text =
         let encodingName = "cl100k_base"
         let encoding = Encoding.Get(encodingName)
-        let bigKeys = encoding.Encode(text) |> Seq.toArray
+        let bigKeys = encoding.Encode(text) |> set
         create encodingName encoding bigKeys
 
     /// Encodes the given text using the given encoder.
@@ -89,12 +90,11 @@ module Encoder =
 
     /// Loads an encoder from the given file.
     let load path =
-        use stream = new FileStream(path, FileMode.Open)
-        let value = JsonSerializer.Deserialize<Json>(stream)
-
+        let value =
+            use stream = new FileStream(path, FileMode.Open)
+            JsonSerializer.Deserialize<Json>(stream)
         let encodingName = value.EncodingName
         let encoding = Encoding.Get(encodingName)
-        create
-            value.EncodingName
-            encoding
-            value.Keys
+        let bigKeys = set value.Keys
+        assert(bigKeys.Count = value.Keys.Length)
+        create value.EncodingName encoding bigKeys
