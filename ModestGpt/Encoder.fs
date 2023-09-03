@@ -20,16 +20,20 @@ module private Category =
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
         else Symbol
 
+/// A list of tokens, indexed by the original location of their
+/// first character in a text.
 type private TokenList = Map<int, string>
 
 module private TokenList =
 
+    /// Creates a token list of individual characters.
     let create (text : string) : TokenList =
         text
             |> Seq.mapi (fun i c ->
                 i, string c)
             |> Map
 
+    /// Answers pairwise keys and values of the given token list.
     let pairwise (tokenList : TokenList) =
         tokenList
             |> Map.toSeq
@@ -37,10 +41,6 @@ module private TokenList =
             |> Seq.map (fun ((i, first), (j, second)) ->
                 (i, j), (first, second))
             |> Seq.toArray
-
-    let set index token (tokenList : TokenList) : TokenList =
-        tokenList
-            |> Map.add index token
 
 /// Byte-pair encoder (but not for bytes).
 type Encoder =
@@ -76,10 +76,13 @@ module Encoder =
             Merges = []
         }
 
-    let private merge indexPairs token (contents : TokenList) =
+    /// Merges occurrences of the given token within the given contents.
+    let private merge indexPairs (token : string) (contents : TokenList) =
         (contents, indexPairs)
             ||> Seq.fold (fun acc (i, j) ->
                 assert(j > i)
+                assert(token.StartsWith(contents[i]))
+                assert(token.EndsWith(contents[j]))
                 acc
                     |> Map.add i token
                     |> Map.remove j)
