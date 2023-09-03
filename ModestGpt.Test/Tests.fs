@@ -18,15 +18,18 @@ type EncoderTests() =
         do
             let encoder = Encoder.create 4 "aaabcbcaaabc"
             Assert.AreEqual(4, encoder.VocabularyMap.Count)   // a, b, c, bc
-            Assert.AreEqual(1, encoder.Merges.Length)         // b + c -> bc
+            Assert.AreEqual(3, encoder.VocabularyMap["bc"])
+            Assert.AreEqual(["b", "c", "bc"], encoder.Merges)
 
             let tokenKeys = Encoder.encode encoder "aabc"
-            Assert.AreEqual(3, tokenKeys.Length)              // a, a, bc
+            Assert.AreEqual([0; 0; 3], Seq.toList tokenKeys)  // a, a, bc
 
         do
             let encoder = Encoder.create 5 "aaabcbcaaabc"
-            Assert.AreEqual(5, encoder.VocabularyMap.Count)   // a, b, c, bc, aa
-            Assert.AreEqual(2, encoder.Merges.Length)         // b + c -> bc, a + a -> aa
+            Assert.AreEqual(5, encoder.VocabularyMap.Count)   // a, b, c, bc, abc
+            Assert.AreEqual(3, encoder.VocabularyMap["bc"])
+            Assert.AreEqual(4, encoder.VocabularyMap["abc"])
+            Assert.AreEqual(["b", "c", "bc"; "a", "bc", "abc"], encoder.Merges)
 
             let tokenKeys = Encoder.encode encoder "aabc"
-            Assert.AreEqual(2, tokenKeys.Length)              // aa, bc
+            Assert.AreEqual([0; 4], Seq.toList tokenKeys)    // a, abc
