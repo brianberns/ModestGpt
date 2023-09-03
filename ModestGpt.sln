@@ -5,15 +5,13 @@ VisualStudioVersion = 17.7.34018.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ModestGpt", "ModestGpt\ModestGpt.fsproj", "{32F39338-667F-43AF-8F94-CF0B3F40A132}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ModestGpt.Test", "ModestGpt.Test\ModestGpt.Test.fsproj", "{CFD07557-5D89-4849-A830-F5A505B9389D}"
-EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "TokenGpt", "Apps\TokenGpt\TokenGpt.fsproj", "{2D8D1EDB-ED71-4261-BF51-9FF66145A3DF}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Sort", "Apps\Sort\Sort.fsproj", "{97F23A59-C715-43A3-BDF4-6C8567093FA1}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "CharGpt", "Apps\CharGpt\CharGpt.fsproj", "{02F34041-B776-452D-81C0-866644A7D856}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Interact", "Apps\Interact\Interact.fsproj", "{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Interact", "Apps\Interact\Interact.fsproj", "{E4AC8FF3-25C7-4BAE-AE92-DA630FB28AE1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +23,6 @@ Global
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Debug|x64.Build.0 = Debug|x64
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Release|x64.ActiveCfg = Release|x64
 		{32F39338-667F-43AF-8F94-CF0B3F40A132}.Release|x64.Build.0 = Release|x64
-		{CFD07557-5D89-4849-A830-F5A505B9389D}.Debug|x64.ActiveCfg = Debug|x64
-		{CFD07557-5D89-4849-A830-F5A505B9389D}.Debug|x64.Build.0 = Debug|x64
-		{CFD07557-5D89-4849-A830-F5A505B9389D}.Release|x64.ActiveCfg = Release|x64
-		{CFD07557-5D89-4849-A830-F5A505B9389D}.Release|x64.Build.0 = Release|x64
 		{2D8D1EDB-ED71-4261-BF51-9FF66145A3DF}.Debug|x64.ActiveCfg = Debug|x64
 		{2D8D1EDB-ED71-4261-BF51-9FF66145A3DF}.Debug|x64.Build.0 = Debug|x64
 		{2D8D1EDB-ED71-4261-BF51-9FF66145A3DF}.Release|x64.ActiveCfg = Release|x64

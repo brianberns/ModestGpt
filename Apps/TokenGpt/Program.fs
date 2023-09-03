@@ -5,61 +5,76 @@ open TorchSharp
 open type torch.TensorIndex
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
+open Tiktoken
+
 open ModestGpt
 
 type DatasetConfig =
     {
         InputFilePath : string
-        MaxVocabularySize : int
         BlockSize : int
         Context : string
     }
+
+type Encoder =
+    {
+        Encoding : Encoding
+        SmallToBigMap : Map<(*smallKey*) int, (*bigKey*) int>
+        BigToSmallMap : Map<(*bigKey*) int, (*smallKey*) int>
+    }
+
+    member this.VocabSize =
+        assert(this.BigToSmallMap.Count = this.SmallToBigMap.Count)
+        this.SmallToBigMap.Count
+
+module Encoder =
+
+    let create text =
+        let encoding = Encoding.Get("cl100k_base")
+        let bigKeys =
+            encoding.EncodeWithAllAllowedSpecial(text)
+                |> Seq.toArray
+        let smallToBigPairs =
+            set bigKeys
+                |> Seq.indexed
+                |> Seq.toArray
+        {
+            Encoding = encoding
+            SmallToBigMap = Map smallToBigPairs
+            BigToSmallMap =
+                smallToBigPairs
+                    |> Seq.map Tuple2.swap
+                    |> Map
+        }
+
+    let encode text encoder =
+        encoder.Encoding
+            .EncodeWithAllAllowedSpecial(text)
+            |> Seq.map (fun bigKey -> encoder.BigToSmallMap[bigKey])
+            |> Seq.toArray
+
+    let decode smallKeys encoder =
+        smallKeys
+            |> Seq.map (fun smallKey ->
+                encoder.SmallToBigMap[smallKey])
+            |> Seq.toArray
+            |> encoder.Encoding.Decode
 
 type TokenDataset(config) =
     inherit Dataset()
 
     let text = File.ReadAllText(config.InputFilePath)
-    do printfn $"Text length: {text.Length}, {set text |> Set.count} distinct"
+    do printfn $"Text length: {text.Length}"
 
-    let encoder =
-        let path = "Encoder.json"
-        if File.Exists(path) then
-            Encoder.load path
-        else
-            printfn "Character frequencies:"
-            text
-                |> Seq.groupBy id
-                |> Seq.map (fun (c, group) ->
-                    c, Seq.length group)
-                |> Seq.sortByDescending snd
-                |> Seq.iter (fun (c, n) ->
-                    printfn $"   {Encoder.printable (string c)}: {n}")
-            let encoder = Encoder.create config.MaxVocabularySize text
-            Encoder.save path encoder
-            encoder
-    do printfn $"Encoder vocabulary size: {encoder.VocabularyMap.Count}"
-
-    let tokenKeys =
-        let path = config.InputFilePath + ".bin"
-        if File.Exists(path) then
-            use stream = new FileStream(path, FileMode.Open)
-            use reader = new BinaryReader(stream)
-            let length = reader.ReadInt32()
-            let tokenKeys =
-                Array.init length (fun _ -> reader.ReadInt32())
-            assert(Encoder.decode encoder tokenKeys = text)
-            tokenKeys
-        else
-            let tokenKeys = Encoder.encode encoder text
-            use stream = new FileStream(path, FileMode.Create)
-            use writer = new BinaryWriter(stream)
-            writer.Write(tokenKeys.Length)
-            for tokenKey in tokenKeys do
-                writer.Write(tokenKey)
-            tokenKeys
+    let encoder = Encoder.create text
+    let tokenKeys = Encoder.encode text encoder
     do printfn $"Encoded length: {tokenKeys.Length}"
 
-    member _.Encoder = encoder
+    member _.Encode(str) = Encoder.encode str encoder
+
+    member _.Decode(tokenKeys) = Encoder.decode tokenKeys encoder
+
+    member _.VocabSize = encoder.VocabSize
 
     member _.BlockSize = config.BlockSize
 
@@ -84,16 +99,15 @@ module Program =
     let datasetConfig =
         {
             InputFilePath = "Input.txt"
-            MaxVocabularySize = 1000
             BlockSize = 128
-            Context = "Tom and Jane are friends. One day, Jane goes to Tom's house. Tom has a big pot of soup. He wants to share it with Jane. \"Jane, do you want some soup?\" Tom asks. \"Yes, please. It looks yummy,\" Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is "
+            Context = "Alice was very tired when she got back home, so she went"
         }
     let dataset = new TokenDataset(datasetConfig)
 
     let model =
         let modelConfig =
             {
-                VocabSize = dataset.Encoder.VocabularyMap.Count
+                VocabSize = dataset.VocabSize
                 BlockSize = dataset.BlockSize
                 NumEmbed = 512
                 NumLayer = 8
@@ -119,7 +133,7 @@ module Program =
 
     for progress in Trainer.run trainerConfig model dataset do
 
-        if progress.IterationNum % 500 = 0 then
+        if progress.IterationNum % 100 = 0 then
             printfn "Iteration: %A, Epoch: %.5f, Duration: %.1f ms, Loss: %f"
                 progress.IterationNum
                 progress.EpochNum
@@ -132,14 +146,14 @@ module Program =
                 // sample from the model...
                 let x =
                     torch.tensor(
-                        Encoder.encode dataset.Encoder datasetConfig.Context,
+                        dataset.Encode(datasetConfig.Context),
                         dtype = torch.long)
                 let x = x[None, Ellipsis].To(trainerConfig.Device)
                 let y = model.Generate(x, dataset.BlockSize, temperature = 1.0, sample = true, topK = 10)[0]
                 let completion =
                     y.data<int64>().ToArray()
                         |> Array.map int
-                        |> Encoder.decode dataset.Encoder
+                        |> dataset.Decode
                 printfn "%s" completion)
             model.save("model.dat") |> ignore
             // revert model to training mode

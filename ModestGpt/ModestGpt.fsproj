@@ -7,7 +7,6 @@
 
   <ItemGroup>
     <Compile Include="Common.fs" />
-    <Compile Include="Encoder.fs" />
     <Compile Include="Model\Wrappers.fs" />
     <Compile Include="Model\Config.fs" />
     <Compile Include="Model\Projection.fs" />
