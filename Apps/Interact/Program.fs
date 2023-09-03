@@ -30,19 +30,21 @@ module Program =
         printf "> "
         let context = Console.ReadLine()
 
-        let x =
-            torch.tensor(
-                Encoder.encode encoder context,
-                device = device,
-                dtype = torch.long)[None, Ellipsis]
-        let y =
-            model.Generate(x, config.BlockSize)[0]
-        let completion =
-            y.data<int64>().ToArray()
-                |> Array.map int
-                |> Encoder.decode encoder
-        printfn ""
-        printfn "%s" completion
+        let tokenKeys = Encoder.encode encoder context
+        if tokenKeys.Length < config.BlockSize then
+            let x =
+                torch.tensor(
+                    tokenKeys,
+                    device = device,
+                    dtype = torch.long)[None, Ellipsis]
+            let y =
+                model.Generate(x, config.BlockSize - tokenKeys.Length)[0]
+            let completion =
+                y.data<int64>().ToArray()
+                    |> Array.map int
+                    |> Encoder.decode encoder
+            printfn ""
+            printfn "%s" completion
 
         loop ()
 
