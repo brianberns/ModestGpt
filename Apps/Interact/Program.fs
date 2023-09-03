@@ -45,6 +45,7 @@ module Program =
             y.data<int64>().ToArray()
                 |> Array.map int
                 |> Encoder.decode encoder
+        printfn ""
         printfn "%s" completion
 
         loop ()
