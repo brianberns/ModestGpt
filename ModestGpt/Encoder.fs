@@ -2,16 +2,6 @@
 
 open System
 
-/// Byte-pair encoder (but not for bytes).
-type Encoder =
-    {
-        /// Maps tokens to the their numeric representations.
-        VocabularyMap : Map<string, int>
-
-        /// Tokens to merge, in priority order. E.g. "do" + "nut" -> "donut".
-        Merges : List<string * string * string>
-    }
-
 /// Character category.
 type private Category =
     | Letter
@@ -29,6 +19,16 @@ module private Category =
         elif Char.IsPunctuation(c) then Punctuation
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
         else Symbol
+
+/// Byte-pair encoder (but not for bytes).
+type Encoder =
+    {
+        /// Maps tokens to the their numeric representations.
+        VocabularyMap : Map<string, int>
+
+        /// Tokens to merge, in priority order. E.g. "do" + "nut" -> "donut".
+        Merges : List<string * string * string>
+    }
 
 module Encoder =   // to-do: optimize this module for speed.
 
