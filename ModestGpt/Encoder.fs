@@ -20,8 +20,8 @@ module private Category =
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
         else Symbol
 
-/// A list of tokens, indexed by the original location of their
-/// first character in a text.
+/// A list of tokens, each of which is indexed by the original
+/// location of its first characters in a text.
 type private TokenList = Map<int, string>
 
 module private TokenList =
