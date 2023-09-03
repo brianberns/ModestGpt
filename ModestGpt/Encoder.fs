@@ -48,8 +48,7 @@ module Encoder =   // to-do: optimize this module for speed.
         {
             VocabularyMap =
                 set text
-                    |> Seq.indexed
-                    |> Seq.map (fun (i, c) ->
+                    |> Seq.mapi (fun i c ->
                         string c, i)
                     |> Map
             Merges = []
@@ -149,8 +148,7 @@ module Encoder =   // to-do: optimize this module for speed.
 
         let mergeMap =
             encoder.Merges
-                |> Seq.indexed
-                |> Seq.map (fun (i, (first, second, _)) ->
+                |> Seq.mapi (fun i (first, second, _) ->
                     (first, second), i)
                 |> Map
         let tryFind pair =

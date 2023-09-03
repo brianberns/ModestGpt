@@ -43,8 +43,8 @@ type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?device, ?numWorker, ?dr
 
     /// Adds fractional epoch to the loader's iterator.
     member this.Indexed =
-        Seq.indexed this
-            |> Seq.map (fun (iBatch, (x, y)) ->
+        this
+            |> Seq.mapi (fun iBatch (x, y) ->
                 let epochFrac =
                     float (iBatch * batchSize) / float dataset.Count
                 epochFrac, x, y)
