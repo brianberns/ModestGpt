@@ -15,9 +15,18 @@ type EncoderTests() =
     [<TestMethod>]
     member _.Encode() =
 
-        let encoder = Encoder.create 5 "aaabbbc"
-        Assert.AreEqual(5, encoder.VocabularyMap.Count)   // a, b, c, aa, bb
-        Assert.AreEqual(2, encoder.Merges.Length)         // a + a -> aa, b + b -> bb
+        do
+            let encoder = Encoder.create 4 "aaabcbcaaabc"
+            Assert.AreEqual(4, encoder.VocabularyMap.Count)   // a, b, c, bc
+            Assert.AreEqual(1, encoder.Merges.Length)         // b + c -> bc
 
-        let tokenKeys = Encoder.encode encoder "ccccaabb"
-        Assert.AreEqual(6, tokenKeys.Length)              // c, c, c, c, aa, bb
+            let tokenKeys = Encoder.encode encoder "aabc"
+            Assert.AreEqual(3, tokenKeys.Length)              // a, a, bc
+
+        do
+            let encoder = Encoder.create 5 "aaabcbcaaabc"
+            Assert.AreEqual(5, encoder.VocabularyMap.Count)   // a, b, c, bc, aa
+            Assert.AreEqual(2, encoder.Merges.Length)         // b + c -> bc, a + a -> aa
+
+            let tokenKeys = Encoder.encode encoder "aabc"
+            Assert.AreEqual(2, tokenKeys.Length)              // aa, bc

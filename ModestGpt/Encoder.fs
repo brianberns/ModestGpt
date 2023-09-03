@@ -22,24 +22,40 @@ module private Category =
 
 /// A list of tokens, each of which is indexed by the original
 /// location of its first characters in a text.
-type private TokenList = Map<int, string>
+type private TokenList = string[]
 
 module private TokenList =
 
     /// Creates a token list of individual characters.
     let create (text : string) : TokenList =
         text
-            |> Seq.mapi (fun i c ->
-                i, string c)
-            |> Map
+            |> Seq.map string
+            |> Seq.toArray
 
-    /// Answers pairwise keys and values of the given token list.
-    let pairwise (tokenList : TokenList) =
-        tokenList
-            |> Map.toSeq
-            |> Seq.pairwise
-            |> Seq.map (fun ((i, first), (j, second)) ->
-                (i, j), (first, second))
+    /// Answers non-overlapping pairwise keys and values of the given
+    /// token list.
+    let pairwise (contents : TokenList) =
+        seq {
+            let mutable prevPair = (null : string), (null : string)
+            for i = 0 to contents.Length - 2 do
+                let first = contents[i]
+                if not (isNull first) then
+                    let mutable seek = true
+                    let mutable j = i + 1
+                    while seek do
+                        let second = contents[j]
+                        if isNull second then
+                            j <- j + 1
+                            seek <- j < contents.Length
+                        else
+                            seek <- false
+                            let pair = first, second
+                            if pair = prevPair then
+                                prevPair <- null, null   // skip this pair because it overlaps the previous one
+                            else
+                                yield (i, j), pair
+                                prevPair <- pair
+        }
 
 /// Byte-pair encoder (but not for bytes).
 type Encoder =
@@ -77,14 +93,13 @@ module Encoder =
 
     /// Merges occurrences of the given token within the given contents.
     let private merge indexPairs (token : string) (contents : TokenList) =
-        (contents, indexPairs)
-            ||> Seq.fold (fun acc (i, j) ->
-                assert(j > i)
-                assert(token.StartsWith(contents[i]))
-                assert(token.EndsWith(contents[j]))
-                acc
-                    |> Map.add i token
-                    |> Map.remove j)
+        for (i, j) in indexPairs do
+            assert(j > i)
+            assert(token.StartsWith(contents[i]))
+            assert(token.EndsWith(contents[j]))
+            contents[i] <- token
+            contents[j] <- null
+        contents
 
     /// Creates an encoder from the given text.
     let create maxVocabSize text =
@@ -154,7 +169,7 @@ module Encoder =
         /// common pairs.
         let rec compress (contents : TokenList) =
 
-            if contents.Count > 1 then
+            if contents.Length > 1 then
 
                 let (first, second), indexPairs =
                     TokenList.pairwise contents
@@ -176,9 +191,9 @@ module Encoder =
 
         TokenList.create text
             |> compress
-            |> Map.values
-            |> Seq.map (fun key ->
-                encoder.VocabularyMap[key])
+            |> Seq.choose (fun token ->
+                if isNull token then None
+                else encoder.VocabularyMap[token] |> Some)
             |> Seq.toArray
 
     /// Decodes the given encoded text.
