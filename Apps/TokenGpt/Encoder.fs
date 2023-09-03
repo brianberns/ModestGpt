@@ -68,8 +68,9 @@ module Encoder =
 
     open System.Text.Json
 
+    /// Serialization type. Must be public.
     [<RequireQualifiedAccess>]
-    type private Json =
+    type Json =
         {
             /// Tiktoken encoding name.
             EncodingName : string
