@@ -8,6 +8,8 @@ open ModestGpt
 
 module Program =
 
+    ModestGpt.setSeed 0
+
     let device = "cpu"
     let encoder = Encoder.load "Encoder.json"
     let config =
@@ -24,6 +26,7 @@ module Program =
 
     let rec loop () =
 
+        printfn ""
         printf "> "
         let context = Console.ReadLine()
 
@@ -37,8 +40,7 @@ module Program =
                 x,
                 config.BlockSize,
                 temperature = 1.0,
-                sample = true,
-                topK = 10)[0]
+                sample = false)[0]
         let completion =
             y.data<int64>().ToArray()
                 |> Array.map int
