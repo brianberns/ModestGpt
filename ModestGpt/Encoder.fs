@@ -42,8 +42,8 @@ module Encoder =   // to-do: optimize this module for speed.
                     yield c
         |]
 
-    /// Initializes a non-merging encoder from the characters in
-    /// the given text.
+    /// Initializes a non-merging encoder from the characters in the
+    /// given text.
     let private initialize (text : string) =
         {
             VocabularyMap =
@@ -89,7 +89,7 @@ module Encoder =   // to-do: optimize this module for speed.
     let create maxVocabSize text =
 
         /// Attempts to add another token to the encoder.
-        let rec loop encoder (contents : _[]) =
+        let rec loop encoder contents =
 
             if encoder.VocabularyMap.Count < maxVocabSize then  // any more room?
 
@@ -116,10 +116,10 @@ module Encoder =   // to-do: optimize this module for speed.
                             |> Seq.maxBy (fun ((first, second), group) ->
                                 Seq.length group, first.Length + second.Length)
                             |> fst
-                    let token = first + second
 
                         // add the new token to the encoder
                     let encoder' =
+                        let token = first + second
                         {
                             VocabularyMap =
                                 Map.add
