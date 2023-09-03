@@ -20,6 +20,28 @@ module private Category =
         elif Char.IsWhiteSpace(c) || Char.IsControl(c) then Whitespace
         else Symbol
 
+type private TokenList = Map<int, string>
+
+module private TokenList =
+
+    let create (text : string) : TokenList =
+        text
+            |> Seq.mapi (fun i c ->
+                i, string c)
+            |> Map
+
+    let pairwise (tokenList : TokenList) =
+        tokenList
+            |> Map.toSeq
+            |> Seq.pairwise
+            |> Seq.map (fun ((i, first), (j, second)) ->
+                (i, j), (first, second))
+            |> Seq.toArray
+
+    let set index token (tokenList : TokenList) : TokenList =
+        tokenList
+            |> Map.add index token
+
 /// Byte-pair encoder (but not for bytes).
 type Encoder =
     {
@@ -30,7 +52,7 @@ type Encoder =
         Merges : List<string * string * string>
     }
 
-module Encoder =   // to-do: optimize this module for speed.
+module Encoder =
 
     /// Makes the given string printable.
     let printable (str : string) =
@@ -54,48 +76,26 @@ module Encoder =   // to-do: optimize this module for speed.
             Merges = []
         }
 
-    /// Makes a content array from the given text.
-    let private toContents (text : string) =
-        Seq.map string text
-            |> Seq.toArray
-
-    /// Merges occurrences of the given pair within the given pairs
-    /// of content.
-    let private merge contentPairs pair =
-        assert(
-            contentPairs
-                |> Seq.pairwise
-                |> Seq.forall (fun ((_, a), (b, _)) -> a = b))
-        let pairs =
-            seq {
-                yield! contentPairs
-                yield (Array.last contentPairs |> snd, "")   // add pair at the end for the last element
-            }
-        (false, pairs)
-            ||> Seq.mapFold (fun merged (first, second) ->
-                assert(first <> "")
-                if merged then
-                    "", false                                // ignore this pair because previous pair was merged
-                elif (first, second) = pair then
-                    (first + second), true                   // merge this pair
-                else
-                    first, false)
-            |> fst
-            |> Seq.where ((<>) "")
-            |> Seq.toArray
+    let private merge indexPairs token (contents : TokenList) =
+        (contents, indexPairs)
+            ||> Seq.fold (fun acc (i, j) ->
+                assert(j > i)
+                acc
+                    |> Map.add i token
+                    |> Map.remove j)
 
     /// Creates an encoder from the given text.
     let create maxVocabSize text =
 
         /// Attempts to add another token to the encoder.
-        let rec loop encoder contents =
+        let rec loop encoder (contents : TokenList) =
 
             if encoder.VocabularyMap.Count < maxVocabSize then  // any more room?
 
                     // find next pair of strings to merge into a token
-                let contentPairs = Array.pairwise contents
+                let contentPairs = TokenList.pairwise contents
                 contentPairs
-                    |> Seq.where (fun (first : string, second : string) ->
+                    |> Seq.where (fun (_, (first : string, second : string)) ->
                         if second.Length > 1
                             && second[0] = ' '
                             && Category.ofChar second[1] = Letter then               // don't allow anything in front of a space-word
@@ -105,14 +105,14 @@ module Encoder =   // to-do: optimize this module for speed.
                             let catSecond = Category.ofChar second[0]
                             catFirst = catSecond
                                 || first = " " && catSecond = Letter)                // create space-word
-                    |> Seq.groupBy id
+                    |> Seq.groupBy snd
                     |> Seq.tryMaxBy (fun ((first, second), group) ->
                         Seq.length group, first.Length + second.Length)
-                    |> Option.map (fun ((first, second), _) ->
+                    |> Option.map (fun ((first, second), group) ->
 
                             // add the new token to the encoder
+                        let token = first + second
                         let encoder' =
-                            let token = first + second
                             {
                                 VocabularyMap =
                                     Map.add
@@ -124,14 +124,16 @@ module Encoder =   // to-do: optimize this module for speed.
                             }
 
                             // merge occurrences of the token in the content
-                        merge contentPairs (first, second)
+                        let indexPairs = Seq.map fst group
+                        contents
+                            |> merge indexPairs token
                             |> loop encoder')
                     |> Option.defaultValue encoder
 
             else encoder
 
         let encoder =
-            loop (initialize text) (toContents text)
+            loop (initialize text) (TokenList.create text)
         { encoder with Merges = List.rev encoder.Merges }   // simpler merges first
 
     /// Encodes the given text.
@@ -147,17 +149,24 @@ module Encoder =   // to-do: optimize this module for speed.
                 |> Map.tryFind pair
                 |> Option.defaultValue Int32.MaxValue
 
-        /// Compresses the given text by repeatedly merging the most common
-        /// pairs.
-        let rec compress (contents : _[]) =
+        /// Compresses the given token list by repeatedly merging the most
+        /// common pairs.
+        let rec compress (contents : TokenList) =
 
-            if contents.Length > 1 then
+            if contents.Count > 1 then
 
-                let contentPairs = Array.pairwise contents
-                let first, second = Seq.minBy tryFind contentPairs
+                let contentPairs = TokenList.pairwise contents
+                let (first, second), indexPairs =
+                    contentPairs
+                        |> Seq.groupBy snd
+                        |> Seq.map (fun (pair, group) ->
+                            pair, Seq.map fst group)
+                        |> Seq.minBy (fst >> tryFind)
 
-                if encoder.VocabularyMap.ContainsKey(first + second) then
-                    merge contentPairs (first, second)
+                let token = first + second
+                if encoder.VocabularyMap.ContainsKey(token) then
+                    contents
+                        |> merge indexPairs token
                         |> compress
                 else
                     assert(tryFind (first, second) = Int32.MaxValue)
@@ -165,10 +174,12 @@ module Encoder =   // to-do: optimize this module for speed.
 
             else contents
 
-        toContents text
+        TokenList.create text
             |> compress
-            |> Array.map (fun key ->
+            |> Map.values
+            |> Seq.map (fun key ->
                 encoder.VocabularyMap[key])
+            |> Seq.toArray
 
     /// Decodes the given encoded text.
     let decode encoder encodedText =
