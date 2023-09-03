@@ -44,6 +44,23 @@ module TorchExt =
             mdule : 'mdule, device : string) =
             mdule.``to``(device)
 
+module Seq =
+
+    /// Answers the maximum value in the given sequence using the given
+    /// projection, if any.
+    let tryMaxBy projection (items : seq<_>) =
+        use e = items.GetEnumerator()
+        if e.MoveNext() then
+            let mutable maxItem = e.Current
+            let mutable maxValue = projection maxItem
+            while e.MoveNext() do
+                let value = projection e.Current
+                if value > maxValue then
+                    maxItem <- e.Current
+                    maxValue <- value
+            Some maxItem
+        else None
+
 module Tuple2 =
 
     /// Swaps the tuple's items.
