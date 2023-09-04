@@ -9,6 +9,8 @@ open TokenGpt
 
 module Program =
 
+    Console.OutputEncoding <- Text.Encoding.UTF8
+
     let device = "cpu"
     let encoder = Encoder.load "Encoder.json"
     let config =
