@@ -79,7 +79,7 @@ module Program =
                 NumHead = 16
                 Dropout = 0.1
             }
-        printfn $"Model config: {modelConfig}"
+        printfn $"Model config:\n{modelConfig}"
         new Gpt(modelConfig)
 
     let trainerConfig =
@@ -87,13 +87,13 @@ module Program =
             Device = "cuda"
             MaxIters = Option.None
             BatchSize = 36
-            LearningRate = 3e-4
+            LearningRate = 5e-5
             Beta1 = 0.9
             Beta2 = 0.95
-            WeightDecay = 0.1 // only applied on matmul weights
+            WeightDecay = 0.1
             GradNormClip = 1.0
         }
-    printfn $"Trainer config: {trainerConfig}"
+    printfn $"Trainer config:\n{trainerConfig}"
     printfn $"{ceil (float dataset.Count / float trainerConfig.BatchSize)} batches/epoch"
 
     for progress in Trainer.run trainerConfig model dataset do
@@ -105,7 +105,7 @@ module Program =
                 progress.Duration.TotalMilliseconds
                 progress.Loss
 
-        if progress.IterationNum % 5000 = 0 then
+        if progress.IterationNum % 10000 = 0 then
             model.eval()
             using (torch.no_grad()) (fun _ ->
                 // sample from the model...
