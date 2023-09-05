@@ -122,11 +122,10 @@ module Program =
 
         // prepare example input for evaluation
     let input =
-        let input =
-            torch.tensor(
-                dataset.Encode(datasetConfig.Context),
-                dtype = torch.long)
-        input[None, Ellipsis].To(trainerConfig.Device)
+        torch.tensor(
+            dataset.Encode(datasetConfig.Context),
+            device = trainerConfig.Device,
+            dtype = torch.long)[None, Ellipsis]
 
         // training loop
     for progress in Trainer.run trainerConfig model dataset do

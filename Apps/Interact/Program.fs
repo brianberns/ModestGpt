@@ -9,8 +9,10 @@ open TokenGpt
 
 module Program =
 
+        // prep for potential Unicode printing
     Console.OutputEncoding <- Text.Encoding.UTF8
 
+        // load model (this must match the original model configuration)
     let device = "cpu"
     let encoder = Encoder.load "Encoder.json"
     let config =
@@ -26,25 +28,29 @@ module Program =
     model.load("model.dat") |> ignore
     model.eval()
 
+        // interactive "chat" loop
     let rec loop () =
 
         try
-
+                // get next user input
             printfn ""
             printf "> "
             let context = Console.ReadLine()
 
+                // determine completion
             let tokenKeys = Encoder.encode encoder context
             if tokenKeys.Length < config.BlockSize then
-                let x =
+                let input =
                     torch.tensor(
                         tokenKeys,
                         device = device,
                         dtype = torch.long)[None, Ellipsis]
-                let y =
-                    model.Generate(x, config.BlockSize - tokenKeys.Length)[0]
+                let output =
+                    model.Generate(
+                        input,
+                        config.BlockSize - tokenKeys.Length)[0]
                 let completion =
-                    y.data<int64>().ToArray()
+                    output.data<int64>().ToArray()
                         |> Array.map int
                         |> Encoder.decode encoder
                 printfn ""
