@@ -11,6 +11,7 @@ module Program =
 
         // prep for potential Unicode printing
     Console.OutputEncoding <- Text.Encoding.UTF8
+    ModestGpt.setSeed 0   // this really isn't needed, but seems to supress a nasty TorchSharp warning
 
         // load model (this must match the original model configuration)
     let device = "cpu"
