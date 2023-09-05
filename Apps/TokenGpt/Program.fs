@@ -65,11 +65,11 @@ type TokenDataset(config) =
     /// Gets an (input, output) tensor pair.
     override _.GetTensor(idx) =
 
-            // e.g. "31 14 15 92"
+            // e.g. "31 41 59 26"
         let chunk = tokenKeys[int idx .. int idx + config.BlockSize]
         assert(chunk.Length = config.BlockSize + 1)
 
-            // e.g. "31 14 15" and "14 15 92"
+            // e.g. "31 41 59" and "41 59 26"
         let input = torch.tensor(chunk[.. chunk.Length - 2], dtype = torch.long)
         let output = torch.tensor(chunk[1 ..], dtype = torch.long)
         input, output
