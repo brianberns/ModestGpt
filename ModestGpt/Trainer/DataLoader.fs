@@ -11,7 +11,7 @@ type Dataset = Dataset<Tensor * Tensor>
 
 /// Minimal data loader for Tensor -> Tensor models.
 type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?device, ?numWorker, ?dropLast) =
-    inherit DataLoader<Tensor * Tensor, Tensor * Tensor>(
+    inherit TorchSharp.Modules.DataLoader<Tensor * Tensor, Tensor * Tensor>(
         dataset,
         batchSize,
         DataLoader.Collate,

@@ -92,7 +92,7 @@ module Trainer =
 
             let tuples =
                 let loader =
-                    new DataLoader(
+                    new ModestGpt.DataLoader(
                         dataset,
                         config.BatchSize,
                         shuffle = true,
