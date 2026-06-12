@@ -9,7 +9,7 @@ open ModestGpt
 /// Linear projection followed by dropout. ("Projection" typically indicates
 /// a change in dimensionality. E.g. Projecting from a high-dimension
 /// space into a lower-dimension space.)
-type Projection(inputSize, outputSize, config) as self =
+type Projection(inputSize : int, outputSize : int, config) as self =
     inherit BaseModule("Projection")
 
     let linear = nn.Linear(inputSize, outputSize)

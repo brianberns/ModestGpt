@@ -1,0 +1,25 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Apps/">
+    <Project Path="Apps/CharGpt/CharGpt.fsproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="Apps/Interact/Interact.fsproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="Apps/Sort/Sort.fsproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="Apps/TokenGpt/TokenGpt.fsproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Readme.md" />
+  </Folder>
+  <Project Path="ModestGpt/ModestGpt.fsproj">
+    <Platform Project="x64" />
+  </Project>
+</Solution>

@@ -28,7 +28,7 @@ type DataLoader(dataset : Dataset, batchSize, ?shuffle, ?device, ?numWorker, ?dr
                     let (tensor : torch.Tensor) = f item
                     tensor.unsqueeze(0))
                 |> Seq.toArray
-        let tensor = torch.cat(tensors, 0)
+        let tensor = torch.cat(tensors, 0L)
         if tensor.device_type <> device.``type``
             || tensor.device_index <> device.index then
             tensor.To(device)

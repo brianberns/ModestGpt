@@ -40,7 +40,7 @@ type SortDataset(count, ?length, ?numDigits) =
 
                 // concatenate the problem specification and the solution
                 // e.g. "202010000122"
-            let cat = torch.cat([|inp; sol|], dim = 0)
+            let cat = torch.cat([|inp; sol|], dim = 0L)
 
                 // the inputs to the transformer will be the offset sequence
                 // e.g. x: "20201000012"

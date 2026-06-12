@@ -79,5 +79,5 @@ type Gpt(config) as self =
                             torch.topk(probs, k = 1, dim = -1) |> sndv
 
                         // append sampled index to the running sequence and continue
-                    torch.cat([| inp; inpNext |], dim = 1)
+                    torch.cat([| inp; inpNext |], dim = 1L)
                         .DetachFromDisposeScope()))
