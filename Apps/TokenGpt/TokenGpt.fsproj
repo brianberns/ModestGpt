@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Tiktoken" Version="1.1.2" />
+    <PackageReference Include="Tiktoken" Version="3.1.5" />
   </ItemGroup>
 
   <ItemGroup>

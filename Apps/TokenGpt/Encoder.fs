@@ -10,8 +10,8 @@ type Encoder =
         /// Tiktoken encoding name.
         EncodingName : string
 
-        /// Tiktoken encoding.
-        Encoding : Encoding
+        /// Tiktoken encoder.
+        Encoding : Tiktoken.Encoder
 
         /// Tiktoken keys.
         SmallToBigMap : int[]
@@ -42,9 +42,9 @@ module Encoder =
         }
 
     /// Creates an encoder for the given text.
-    let ofText text =
+    let ofText (text : string) =
         let encodingName = "cl100k_base"
-        let encoding = Encoding.Get(encodingName)
+        let encoding = TikTokenEncoder.CreateForEncoding(encodingName)
         let bigKeys = encoding.Encode(text) |> set
         create encodingName encoding bigKeys
 
@@ -95,7 +95,7 @@ module Encoder =
             use stream = new FileStream(path, FileMode.Open)
             JsonSerializer.Deserialize<Json>(stream)
         let encodingName = value.EncodingName
-        let encoding = Encoding.Get(encodingName)
+        let encoding = TikTokenEncoder.CreateForEncoding(encodingName)
         let bigKeys = set value.Keys
         assert(bigKeys.Count = value.Keys.Length)
         create value.EncodingName encoding bigKeys
