@@ -3,6 +3,7 @@
     <Platform Name="x64" />
   </Configurations>
   <Folder Name="/Apps/">
+    <File Path="Apps/Readme.md" />
     <Project Path="Apps/CharGpt/CharGpt.fsproj">
       <Platform Project="x64" />
     </Project>
