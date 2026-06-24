@@ -11,15 +11,13 @@ open type torch
 open TorchSharp.Modules
 open FSharp.Core.Operators   // reclaim "float" and other F# operators
 
-open ModestGpt
-
 /// Module that takes a tensor as input and produces another tensor
 /// as output.
 type BaseModule = nn.Module<Tensor, Tensor>
 
 module Init =
 
-    /// Initializes the given using a normal distribution.
+    /// Initializes the given tensor using a normal distribution.
     let normal std tensor =
         nn.init.normal_(
             tensor,
