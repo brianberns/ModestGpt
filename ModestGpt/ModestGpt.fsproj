@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Common.fs" />
+    <Compile Include="Prelude.fs" />
     <Compile Include="Model\Wrappers.fs" />
     <Compile Include="Model\Config.fs" />
     <Compile Include="Model\Projection.fs" />

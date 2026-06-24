@@ -53,7 +53,7 @@ type CausalSelfAttention(config) as self =
         let att =
             let att =
                 let scale = 1.0 / (key.size(-1) |> float |> sqrt)
-                (query @@ key.transpose(-2, -1)) * scalar scale
+                (query @@ key.transpose(-2, -1)) * scale
             let mask =
                 let slice = Slice(stop = T)
                 bias[Colon, Colon, slice, slice]

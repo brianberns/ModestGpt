@@ -18,10 +18,6 @@ module TorchExt =
     /// Second item of a value tuple.
     let sndv (struct (_, y)) = y
 
-    /// Creates an explicit scalar.
-    /// https://github.com/dotnet/TorchSharp/issues/1073
-    let scalar (x : float) = x.ToScalar()
-
     /// Replacement for PyTorch's "@" operator.
     let (@@) a b = torch.matmul(a, b)
 

@@ -60,7 +60,7 @@ type Gpt(config) as self =
                     let logits = self.forward(inpCond)
 
                         // pluck the logits at the final step and scale by desired temperature
-                    let logits = logits[Colon, Single(-1), Colon] / (scalar temperature)
+                    let logits = logits[Colon, Single(-1), Colon] / temperature
 
                         // optionally crop the logits to only the top k options
                     Option.iter (fun topK ->
